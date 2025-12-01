@@ -28,11 +28,12 @@ int main() {
   unsigned int zeros = 0;
   unsigned int passes = 0;
   while (i != end) {
-    char d;
-    int n;
-    i = scan(i, "%c%d\n", &d, &n);
-    assert(n > 0);
-    if (!i || (d != 'L' && d != 'R')) die("bad input t");
+    assert(*i == 'L' || *i == 'R');
+    char d = *i++;
+    unsigned int n;
+    i = scan_uint(i, &n);
+    assert(i != NULL && *i == '\n');
+    i++;
     const int q = n / 100, r = n % 100;
     passes += q;
     if (d != parity) {
@@ -50,7 +51,5 @@ int main() {
       }
     }
   }
-  print("%d\n%d\n", zeros, passes);
+  print_uints(zeros, passes);
 }
-
-// wrong: 5829
