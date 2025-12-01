@@ -5,7 +5,7 @@ int main() {
   char buffer[20 << 10];
   const int length = read(STDIN_FILENO, buffer, sizeof(buffer));
   if (length == 0 || length == sizeof(buffer) || buffer[length - 1] != '\n') {
-    die("bad input");
+    die("bad input l");
   }
   const char* i = buffer;
   const char* const end = buffer + length;
@@ -17,15 +17,28 @@ int main() {
     int n;
     i = scan(i, "%c%d\n", &d, &n);
     assert(n > 0);
-    if (!i || (d != 'L' && d != 'R')) die("bad input");
-    // Tick the dial one step at a time. Use 99 instead of -1 to avoid
-    // having to deal with negative values in the modulo in the loop.
-    const int step = d == 'L' ? 99 : 1;
-    for (int i = 0; i < n; i++) {
-      dial = (dial + step) % 100;
-      if (dial == 0) passes++;
+    if (!i || (d != 'L' && d != 'R')) die("bad input t");
+    const int q = n / 100, r = n % 100;
+    passes += q;
+    if (d == 'L') {
+      if (r <= dial) {
+        dial -= r;
+        if (dial == 0) passes++;
+      } else {
+        if (dial != 0) passes++;
+        dial -= r - 100;
+      }
+    } else {
+      if (r < 100 - dial) {
+        dial += r;
+      } else {
+        if (dial != 0) passes++;
+        dial += r - 100;
+      }
     }
     if (dial == 0) zeros++;
   }
   print("%d\n%d\n", zeros, passes);
 }
+
+// wrong: 5829
