@@ -19,7 +19,7 @@ int main() {
   char buffer[20 << 10];
   const int length = read(STDIN_FILENO, buffer, sizeof(buffer));
   if (length == 0 || length == sizeof(buffer) || buffer[length - 1] != '\n') {
-    die("bad input l");
+    die("bad input");
   }
   const char* i = buffer;
   const char* const end = buffer + length;
@@ -28,11 +28,11 @@ int main() {
   unsigned int zeros = 0;
   unsigned int passes = 0;
   while (i != end) {
-    assert(*i == 'L' || *i == 'R');
+    if (*i != 'L' && *i != 'R') die("bad input");
     char d = *i++;
     unsigned int n;
     i = scan_uint(i, &n);
-    assert(i != NULL && *i == '\n');
+    if (i == NULL || *i != '\n') die("bad input");
     i++;
     const int q = n / 100, r = n % 100;
     passes += q;
