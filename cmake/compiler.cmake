@@ -22,6 +22,9 @@ add_compile_options(-fno-pic)
 # Disable stack protectors, since this requires some library code.
 add_compile_options(-fno-stack-protector)
 
+# Drop frame pointers in release builds since this generates extra instructions.
+add_compile_options("$<$<CONFIG:Release>:-fomit-frame-pointer>")
+
 # Automatically include the bootstrapping header.
 add_compile_options(-include "${CMAKE_CURRENT_SOURCE_DIR}/src/core/start.h")
 
