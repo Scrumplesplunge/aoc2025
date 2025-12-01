@@ -2,7 +2,9 @@
 
 #include <stdarg.h>
 
-void die(const char* restrict pattern, ...);
+#include "strlen.h"
+
+void die(const char*);
 
 char* format_uint(char* restrict out, unsigned int x) {
   char buffer[16];
@@ -49,7 +51,7 @@ char* vformat(char* restrict out, const char* restrict pattern, va_list args) {
         out = format_string(out, va_arg(args, const char*));
         break;
       default:
-        die("bad format %%%c\n", pattern[1]);
+        die("bad format");
     }
     pattern += 2;
   }
@@ -94,11 +96,8 @@ void print(const char* restrict pattern, ...) {
   va_end(args);
 }
 
-void die(const char* restrict pattern, ...) {
-  va_list args;
-  va_start(args, pattern);
-  vfprint(STDERR_FILENO, pattern, args);
-  va_end(args);
+void die(const char* message) {
+  write(STDERR_FILENO, message, strlen(message));
   exit(1);
 }
 
@@ -145,7 +144,7 @@ const char* vscan(const char* restrict in, const char* restrict pattern,
         if (!in) return NULL;
         break;
       default:
-        die("bad format %%%c\n", pattern[1]);
+        die("bad format");
     }
     pattern += 2;
   }
