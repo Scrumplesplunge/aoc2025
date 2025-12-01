@@ -12,7 +12,6 @@
 //     This flipped state is tracked by a parity field: 'L' means unflipped,
 //     'R' means flipped.
 
-#include "core/assert.h"
 #include "core/io.h"
 
 int main() {
