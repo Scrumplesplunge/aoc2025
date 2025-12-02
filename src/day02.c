@@ -13,8 +13,9 @@ static unsigned int read_uint_n(const char* in, int n) {
 static const unsigned long long pow10_data[] = {
     1,       10,       100,       1000,       10000,      100000,
     1000000, 10000000, 100000000, 1000000000, 10000000000};
-static unsigned long long pow10(int n) {
-  assert(0 <= n && n < sizeof(pow10_data) / sizeof(pow10_data[0]));
+
+static unsigned long long pow10ull(unsigned n) {
+  assert(n < sizeof(pow10_data) / sizeof(pow10_data[0]));
   return pow10_data[n];
 }
 
@@ -28,33 +29,30 @@ int compare_repeated(const char* a, int an, const char* b, int bn) {
   return 0;
 }
 
-unsigned int min_chunk(const char* in, int n, int chunk_size) {
-  assert(n > 0 && n % chunk_size == 0);
-  unsigned int min = -1;
-  for (int i = 0; i < n; i += chunk_size) {
-    const unsigned int x = read_uint_n(in + i, chunk_size);
-    if (x < min) min = x;
-  }
-  return min;
-}
-
-unsigned int max_chunk(const char* in, int n, int chunk_size) {
-  assert(n > 0 && n % chunk_size == 0);
-  unsigned int max = 0;
-  for (int i = 0; i < n; i += chunk_size) {
-    const unsigned int x = read_uint_n(in + i, chunk_size);
-    if (x > max) max = x;
-  }
-  return max;
-}
-
-unsigned int masks[] = {0x00001, 0x00011, 0x00101, 0x01011, 0x10001};
+// For part 2, we need a way to avoid double-counting values in each range.
+// To do this, we can attribute each ID to a logical bucket corresponding to the
+// shortest repeating sequence length which applies for that ID. When we count
+// up all the invalid IDs with a repeating group of length N, we may also be
+// counting some IDs for logical buckets <N. For example, the count for length 4
+// will also count values for lengths 2 and 1.
+//
+// To work around this, we can keep track of how many times we have counted a
+// specific ID and ensure that we have no double-counting by the end. For each
+// possible repeating pattern length (1-5), we have a hard-coded list of other
+// pattern lengths which will be counted (e.g. for 4, we have 4, 2, and 1). We
+// represent this with a single unsigned int which represents a vector of 4-bit
+// counters (so the value for 4 has 4+2+1 -> 0x01011).
+//
+// This allows us to easily keep track of what we've counted by performing
+// arithmetic on the masks.
+static const unsigned int masks[] = {0x00001, 0x00011, 0x00101, 0x01011,
+                                     0x10001};
 
 int main() {
   char buffer[1 << 10];
   const int length = read(STDIN_FILENO, buffer, sizeof(buffer));
   if (length == 0 || length == sizeof(buffer) || buffer[length - 1] != '\n') {
-    die("bad input l");
+    die("bad input");
   }
   const char* i = buffer;
   const char* const end = buffer + length;
@@ -66,7 +64,7 @@ int main() {
     while (is_digit(*i)) i++;
     if (i == first || *i != '-') {
       write(STDOUT_FILENO, i, strlen(i));
-      die("bad input d");
+      die("bad input");
     }
     const int first_n = i - first;
     i++;
@@ -78,68 +76,73 @@ int main() {
     if (second_n < first_n || first_n + 1 < second_n) die("bad range");
     const int max_sequence_length = second_n / 2;
     assert(max_sequence_length <= 5);
-    write(STDERR_FILENO, first, i - first);
-    write(STDERR_FILENO, "\n", 1);
 
-    // Consider every repeating pattern length.
-    unsigned long long before = part2;
     // Consider every ID length.
     for (int n = first_n; n <= second_n; n++) {
+      // Mask of pattern lengths that we have counted (initially nothing).
       unsigned int mask = 0x00000;
+      // Consider every repeating pattern length.
       for (int l = max_sequence_length; l >= 1; l--) {
         if (n % l != 0 || n / l == 1) {
+          // If `l` does not divide the length then there are no invalid IDs
+          // in this logical bucket, so there's nothing to count
+          // (and double-counting 0 is still 0, so nothing to fix).
           mask &= ~(0xFu << (4 * (l - 1)));
           continue;
         }
+        // Rather than iterating over all possible repeating sequences of length
+        // `l`, we can calculate the minimum value `a` that would work and the
+        // maximum value `b` that would work and then derive the sum from that.
         unsigned long long a, b;
         if (n == first_n) {
           const unsigned int prefix = read_uint_n(first, l);
           a = compare_repeated(first, l, first, first_n) >= 0 ? prefix
                                                               : prefix + 1;
         } else {
-          a = pow10(l - 1);
+          a = pow10ull(l - 1);
         }
         if (n == second_n) {
           const unsigned int prefix = read_uint_n(second, l);
           b = compare_repeated(second, l, second, second_n) <= 0 ? prefix
                                                                  : prefix - 1;
         } else {
-          b = pow10(l) - 1;
+          b = pow10ull(l) - 1;
         }
         if (b < a) {
+          // There are no eligible patterns with this length, so there's nothing
+          // to count (and double-counting 0 is still 0, so nothing to fix).
           mask &= ~(0xFu << (4 * (l - 1)));
           continue;
         }
-        // Number of different repeating sequences which work.
+        // We want to calculate the sum of all invalid IDs, which is the sum of
+        // all sequences of `k` repeats of the values in the range `[a, b]`.
+        // We can get this by calculating the sum of the range `[a, b]` and then
+        // extrapolating to the sum of the repeated sequences.
         const unsigned long long x = b * (b + 1) / 2 - (a - 1) * a / 2;
         // Sum of all IDs with one of these sequences.
         unsigned long long sum = 0;
-        for (int i = 0; i < n; i += l) {
-          sum += x * pow10(i);
-        }
+        for (int i = 0; i < n; i += l) sum += x * pow10ull(i);
         if (n / l == 2) part1 += sum;
 
-        // this is some bullshit.
-        
-        // check how many times we already counted sequences of this length.
+        // Check how many times we already counted sequences of this length,
+        // using the double-counting mask.
         const int current_count = (mask >> (4 * (l - 1))) & 0xF;
-        // correct it to a single count.
+        // Add (or subtract) multiples so that this count is correct. In doing
+        // so, we may also influence the number of times that we counted shorter
+        // sequences, but since we're iterating from longest to shortest we will
+        // still have chance to correct that before finishing.
         part2 += (1 - current_count) * sum;
-        // update the mask.
         mask += (1 - current_count) * masks[l - 1];
-        const int new_count = (mask >> (4 * (l - 1))) & 0xF;
-        assert(new_count == 1);
+        assert(((mask >> (4 * (l - 1))) & 0xF) == 1);
       }
+#ifndef NDEBUG
       // Check that everything is counted at most once.
       for (int i = 0; i < 5; i++) {
         unsigned x = (mask >> (4 * i)) & 0xF;
         assert(x == 0 || x == 1);
       }
+#endif
     }
-    const unsigned long long after = part2;
-    print("  +%llu\n", after - before);
   }
   print_ulongs(part1, part2);
 }
-
-// part 2 21932329060 wrong answer (too low)
