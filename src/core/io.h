@@ -89,8 +89,9 @@ char* vformat(char* restrict out, const char* restrict pattern, va_list args) {
   return out;
 }
 
-__attribute__((format(printf, 2, 3)))
-char* format(char* restrict out, const char* restrict pattern, ...) {
+__attribute__((format(printf, 2, 3))) char* format(char* restrict out,
+                                                   const char* restrict pattern,
+                                                   ...) {
   va_list args;
   va_start(args, pattern);
   out = vformat(out, pattern, args);
@@ -131,8 +132,8 @@ void print_ulongs(unsigned long long a, unsigned long long b) {
   write(STDOUT_FILENO, buffer, o - buffer);
 }
 
-__attribute__((format(printf, 1, 2)))
-void print(const char* restrict pattern, ...) {
+__attribute__((format(printf, 1, 2))) void print(const char* restrict pattern,
+                                                 ...) {
   va_list args;
   va_start(args, pattern);
   vfprint(STDOUT_FILENO, pattern, args);
@@ -227,8 +228,8 @@ const char* vscan(const char* restrict in, const char* restrict pattern,
   return in;
 }
 
-__attribute__((format(scanf, 2, 3)))
-const char* scan(const char* restrict in, const char* restrict pattern, ...) {
+__attribute__((format(scanf, 2, 3))) const char* scan(
+    const char* restrict in, const char* restrict pattern, ...) {
   va_list args;
   va_start(args, pattern);
   in = vscan(in, pattern, args);

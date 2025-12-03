@@ -1,6 +1,6 @@
 #pragma once
 
-static void* memcpy(void* restrict dest, const void* restrict src, size_t n) {
+void* memcpy(void* restrict dest, const void* restrict src, size_t n) {
   char* o = dest;
   char* const end = o + n;
   const char* i = src;

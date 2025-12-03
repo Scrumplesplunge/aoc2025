@@ -18,8 +18,8 @@ typedef int ssize_t;
 
 // System calls. We will only use three: read, write, and exit.
 
-__attribute__((access (write_only, 2)))
-static ssize_t read(unsigned int fd, void* buffer, size_t size) {
+__attribute__((access(write_only, 2))) ssize_t read(unsigned int fd,
+                                                    void* buffer, size_t size) {
   ssize_t result;
   asm volatile("int $0x80"
                : "=a"(result)
@@ -28,8 +28,9 @@ static ssize_t read(unsigned int fd, void* buffer, size_t size) {
   return result;
 }
 
-__attribute__((access (read_only, 2)))
-static ssize_t write(unsigned int fd, const void* buffer, size_t size) {
+__attribute__((access(read_only, 2))) ssize_t write(unsigned int fd,
+                                                    const void* buffer,
+                                                    size_t size) {
   ssize_t result;
   asm volatile("int $0x80"
                : "=a"(result)
@@ -38,16 +39,17 @@ static ssize_t write(unsigned int fd, const void* buffer, size_t size) {
   return result;
 }
 
-[[noreturn]] static void exit(int code) {
+[[noreturn]] void exit(int code) {
   asm volatile("int $0x80" : : "a"(1), "b"(code));
 }
 
 // Entry point. We will invoke main from _start.
 
-int main(void);
+static int main(void);
 
-__attribute__((force_align_arg_pointer))
-__attribute__((noreturn)) void _start(void) {
+__attribute__((externally_visible))
+__attribute__((force_align_arg_pointer)) __attribute__((noreturn)) void
+_start(void) {
   // Upon ELF entry, the top of the stack is argc, argv[0], argv[1], etc.
   // However, we can't easily access that from here since the compiler may
   // or may not insert function prelude that adjusts the stack pointer.

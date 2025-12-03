@@ -1,6 +1,6 @@
 #pragma once
 
-static void* memmove(void* dest, const void* src, size_t n) {
+void* memmove(void* dest, const void* src, size_t n) {
   if (dest < src) {
     char* o = dest;
     char* const end = o + n;
