@@ -1,4 +1,28 @@
+#include "core/assert.h"
 #include "core/io.h"
+
+unsigned long long joltage(const char* first, const char* last, int n) {
+  assert(n <= 12);
+  char buffer[13] = {};
+  char* buffer_end = buffer + n;
+  *buffer_end = '\0';
+  memcpy(buffer, last - n, n);
+  for (const char* i = last - n; i != first; i--) {
+    const char c = i[-1];
+    if (c < buffer[0]) continue;
+    char temp = c;
+    for (char* j = buffer; j != buffer_end; j++) {
+      if (*j > temp) break;
+      char x = *j;
+      *j = temp;
+      temp = x;
+    }
+  }
+  unsigned long long x;
+  const char* result = scan_ulong(buffer, &x);
+  assert(result == buffer_end);
+  return x;
+}
 
 int main() {
   char buffer[21 << 10];
@@ -9,25 +33,18 @@ int main() {
   const char* i = buffer;
   const char* const end = buffer + length;
 
-  int sum = 0;
+  unsigned long long part1 = 0;
+  unsigned long long part2 = 0;
   while (i != end) {
     const char* first = i;
     while (*i != '\n') i++;
     const char* last = i;
+    *(char*)i = '\0';
     i++;
 
-    char joltage[2] = {first[0], last[-1]};
-    for (const char* j = first + 1; j + 1 != last; j++) {
-      if (*j > joltage[0]) {
-        joltage[0] = *j;
-        joltage[1] = last[-1];
-      } else if (*j > joltage[1]) {
-        joltage[1] = *j;
-      }
-    }
-
-    sum += 10 * (joltage[0] - '0') + (joltage[1] - '0');
+    part1 += joltage(first, last, 2);
+    part2 += joltage(first, last, 12);
   }
 
-  print_uints(sum, 0);
+  print_ulongs(part1, part2);
 }
