@@ -61,4 +61,3 @@ _start(void) {
 #include "memcpy.h"
 #include "memmove.h"
 #include "memset.h"
-#include "divmod.h"

@@ -8,9 +8,9 @@ add_compile_options(-Wall -Wextra -pedantic)
 add_compile_options(-ffunction-sections -fdata-sections)
 add_link_options("$<$<CONFIG:Release>:-Wl,--gc-sections>")
 
-# Configure for a 32-bit build.
-add_compile_options(-m32)
-add_link_options(-m32)
+# Configure for an x32 build (64-bit instructions, 32-bit pointers).
+add_compile_options(-mx32)
+add_link_options(-mx32)
 
 # Disable all default libraries.
 add_compile_options(-nostdlib -nostartfiles -static)
