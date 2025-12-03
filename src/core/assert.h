@@ -12,5 +12,7 @@
 #define assert(expr) \
   if (!(expr)) assert_fail(__FILE__, __LINE__, #expr)
 #else
-#define assert(expr)
+// Use `expr` in an unevaluated context so we don't get warnings about unused
+// variables.
+#define assert(expr) (void)sizeof(expr)
 #endif
