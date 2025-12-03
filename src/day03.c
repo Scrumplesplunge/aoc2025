@@ -1,3 +1,12 @@
+// Finding the largest number formed from a subsequence of n values.
+//
+//   Part 1: 2 values.
+//   Part 2: 12 values.
+//
+// We can do this by maintaining a current best value and updating it as we scan
+// the input. Here, I chose to start with the last n values of a line and update
+// the list for each preceding character.
+
 #include "core/assert.h"
 #include "core/io.h"
 
@@ -9,7 +18,13 @@ unsigned long long joltage(const char* first, const char* last, int n) {
   memcpy(buffer, last - n, n);
   for (const char* i = last - n; i != first; i--) {
     const char c = i[-1];
+    // If the digit is smaller than the leading digit of our current best, it's
+    // useless to us: including this digit will make the value smaller.
     if (c < buffer[0]) continue;
+    // Otherwise, we find the longest descending prefix and drop the last digit
+    // from it. This works because we've effectively made every digit of our
+    // subsequence larger up until the end of that prefix, and left every digit
+    // the same after that.
     char temp = c;
     for (char* j = buffer; j != buffer_end; j++) {
       if (*j > temp) break;
