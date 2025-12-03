@@ -148,6 +148,7 @@ void die(const char* message) {
 bool is_digit(char c) { return '0' <= c && c <= '9'; }
 
 const char* scan_uint(const char* restrict in, unsigned int* x) {
+  *x = 0;
   if (!is_digit(*in)) return NULL;
   unsigned int value = 0;
   while (is_digit(*in)) value = 10 * value + (*in++ - '0');
@@ -156,6 +157,7 @@ const char* scan_uint(const char* restrict in, unsigned int* x) {
 }
 
 const char* scan_ulong(const char* restrict in, unsigned long long* x) {
+  *x = 0;
   if (!is_digit(*in)) return NULL;
   unsigned long long value = 0;
   while (is_digit(*in)) value = 10 * value + (*in++ - '0');
