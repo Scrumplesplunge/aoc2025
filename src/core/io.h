@@ -156,7 +156,7 @@ const char* scan_uint(const char* restrict in, unsigned int* x) {
 
 const char* scan_ulong(const char* restrict in, unsigned long long* x) {
   if (!is_digit(*in)) return NULL;
-  unsigned int value = 0;
+  unsigned long long value = 0;
   while (is_digit(*in)) value = 10 * value + (*in++ - '0');
   *x = value;
   return in;
