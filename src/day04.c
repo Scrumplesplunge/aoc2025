@@ -65,7 +65,7 @@ int main() {
     grid[pos.y][pos.x] = false;
     for (int dy = -1; dy <= 1; dy++) {
       for (int dx = -1; dx <= 1; dx++) {
-        const struct pos neighbor = (struct pos){pos.x + dx, pos.y + dy};
+        const struct pos neighbor = {pos.x + dx, pos.y + dy};
         if (grid[neighbor.y][neighbor.x]) stack[stack_size++] = neighbor;
       }
     }
