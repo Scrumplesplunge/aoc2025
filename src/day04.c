@@ -16,7 +16,6 @@ int adjacent(struct pos pos) {
   int result = 0;
   for (int dy = -1; dy <= 1; dy++) {
     for (int dx = -1; dx <= 1; dx++) {
-      if (dx == 0 && dy == 0) continue;
       if (grid[pos.y + dy][pos.x + dx]) result++;
     }
   }
@@ -51,7 +50,7 @@ int main() {
     for (int x = 1; x <= width; x++) {
       if (!grid[y][x]) continue;
       const struct pos pos = {x, y};
-      if (adjacent(pos) < 4) stack[stack_size++] = pos;
+      if (adjacent(pos) < 5) stack[stack_size++] = pos;
     }
   }
   const unsigned part1 = stack_size;
@@ -60,7 +59,7 @@ int main() {
   unsigned part2 = 0;
   while (stack_size > 0) {
     struct pos pos = stack[--stack_size];
-    if (!grid[pos.y][pos.x] || adjacent(pos) >= 4) continue;
+    if (!grid[pos.y][pos.x] || adjacent(pos) >= 5) continue;
     part2++;
     grid[pos.y][pos.x] = false;
     for (int dy = -1; dy <= 1; dy++) {
