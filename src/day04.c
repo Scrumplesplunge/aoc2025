@@ -6,7 +6,22 @@
 // so that we don't need to check for boundary conditions when looking for
 // adjacent cells. This cuts 23% off the execution time.
 enum { max_size = 140 };
-bool grid[2][max_size + 2][max_size + 2];
+bool grid[max_size + 2][max_size + 2];
+struct pos { unsigned char x, y; };
+
+enum { max_stack_size = max_size * max_size };
+struct pos stack[max_size * max_size];
+
+int adjacent(struct pos pos) {
+  int result = 0;
+  for (int dy = -1; dy <= 1; dy++) {
+    for (int dx = -1; dx <= 1; dx++) {
+      if (dx == 0 && dy == 0) continue;
+      if (grid[pos.y + dy][pos.x + dx]) result++;
+    }
+  }
+  return result;
+}
 
 int main() {
   char buffer[20 << 10];
@@ -26,45 +41,34 @@ int main() {
     for (int x = 0; x < width; x++) {
       const char cell = buffer[y * (width + 1) + x];
       if (cell != '.' && cell != '@') die("bad input");
-      grid[0][y + 1][x + 1] = (cell == '@');
+      grid[y + 1][x + 1] = (cell == '@');
     }
   }
 
-  int iteration = 0;
-  unsigned part1 = 0;
-  unsigned part2 = 0;
-  while (true) {
-    // In each iteration, calculate the rolls which are removed and update the
-    // grid. To avoid changes influencing checks for rolls later in the same
-    // iteration, each iteration reads from one grid and writes to another. The
-    // `from` and `to` grids alternate in each iteration.
-    const bool (*from)[max_size + 2] = grid[iteration % 2];
-    bool (*to)[max_size + 2] = grid[(iteration + 1) % 2];
+  // Part 1: Identify all the removable nodes.
+  unsigned stack_size = 0;
+  for (int y = 1; y <= height; y++) {
+    for (int x = 1; x <= width; x++) {
+      if (!grid[y][x]) continue;
+      const struct pos pos = {x, y};
+      if (adjacent(pos) < 4) stack[stack_size++] = pos;
+    }
+  }
+  const unsigned part1 = stack_size;
 
-    unsigned num_removed = 0;
-    for (int y = 1; y <= height; y++) {
-      for (int x = 1; x <= width; x++) {
-        to[y][x] = from[y][x];
-        if (!from[y][x]) continue;
-        int adjacent = 0;
-        for (int dy = -1; dy <= 1; dy++) {
-          for (int dx = -1; dx <= 1; dx++) {
-            if (dx == 0 && dy == 0) continue;
-            if (from[y + dy][x + dx]) adjacent++;
-          }
-        }
-        if (adjacent < 4) {
-          to[y][x] = false;
-          num_removed++;
-        }
+  // Part 2: Iteratively remove nodes.
+  unsigned part2 = 0;
+  while (stack_size > 0) {
+    struct pos pos = stack[--stack_size];
+    if (!grid[pos.y][pos.x] || adjacent(pos) >= 4) continue;
+    part2++;
+    grid[pos.y][pos.x] = false;
+    for (int dy = -1; dy <= 1; dy++) {
+      for (int dx = -1; dx <= 1; dx++) {
+        const struct pos neighbor = (struct pos){pos.x + dx, pos.y + dy};
+        if (grid[neighbor.y][neighbor.x]) stack[stack_size++] = neighbor;
       }
     }
-
-    if (num_removed == 0) break;
-    if (iteration == 0) part1 += num_removed;
-    part2 += num_removed;
-    iteration++;
-    if (iteration == max_size) die("too long");
   }
 
   print_uints(part1, part2);
