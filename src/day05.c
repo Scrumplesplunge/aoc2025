@@ -18,35 +18,20 @@ unsigned long long ingredients[max_ingredients];
 void add_fresh_range(struct inclusive_range range) {
   // Find the range of ranges which overlap or concatenate with `range`.
   const int n = num_ranges;
-  int f = 0;
-  while (f < n && ranges[f].last + 1 < range.first) f++;
-  int l = f;
-  while (l < n && ranges[l].first < range.last + 1) l++;
 
-  if (f == n) {
-    // Strictly after all existing ranges.
-    if (num_ranges == max_ranges) die("too large");
-    ranges[num_ranges++] = range;
-  } else if (l == n) {
-    // Range is last, but overlaps with some.
-    ranges[f].last = range.last;
-    num_ranges = f + 1;
-  } else if (f == l) {
-    // Range inserts at f.
-    if (num_ranges == max_ranges) die("too large");
-    memmove(ranges + f + 1, ranges + f,
-            (n - f) * sizeof(struct inclusive_range));
-    ranges[f] = range;
-    num_ranges++;
-  } else {
-    // Range overlaps or concatenates with some entries.
-    if (ranges[f].first < range.first) range.first = ranges[f].first;
-    if (ranges[l - 1].last > range.last) range.last = ranges[l - 1].last;
-    memmove(ranges + f + 1, ranges + l,
-            (n - l) * sizeof(struct inclusive_range));
-    ranges[f] = range;
-    num_ranges -= l - f - 1;
+  int j = 0;
+  for (int i = 0; i < n; i++) {
+    struct inclusive_range* r = &ranges[i];
+    if (range.last + 1 >= r->first && r->last + 1 >= range.first) {
+      if (r->first < range.first) range.first = r->first;
+      if (r->last > range.last) range.last = r->last;
+    } else {
+      ranges[j++] = *r;
+    }
   }
+  if (j == max_ranges) die("too large");
+  ranges[j++] = range;
+  num_ranges = j;
 }
 
 void read_input() {
