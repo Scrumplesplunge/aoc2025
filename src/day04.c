@@ -16,7 +16,7 @@ int adjacent(struct pos pos) {
   int result = 0;
   for (int dy = -1; dy <= 1; dy++) {
     for (int dx = -1; dx <= 1; dx++) {
-      if (grid[pos.y + dy][pos.x + dx]) result++;
+      result += grid[pos.y + dy][pos.x + dx];
     }
   }
   return result;
