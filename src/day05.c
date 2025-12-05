@@ -16,10 +16,9 @@ int num_ingredients;
 unsigned long long ingredients[max_ingredients];
 
 void add_fresh_range(struct inclusive_range range) {
-  // Find the range of ranges which overlap or concatenate with `range`.
   const int n = num_ranges;
-
   int j = 0;
+  // Remove any overlapping or adjacent ranges and add them to `range`.
   for (int i = 0; i < n; i++) {
     struct inclusive_range* r = &ranges[i];
     if (range.last + 1 >= r->first && r->last + 1 >= range.first) {
@@ -30,6 +29,7 @@ void add_fresh_range(struct inclusive_range range) {
     }
   }
   if (j == max_ranges) die("too large");
+  // Insert `range` into the list.
   num_ranges = j + 1;
   while (j > 0 && range.last < ranges[j - 1].first) {
     ranges[j] = ranges[j - 1];
