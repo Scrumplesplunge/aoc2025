@@ -30,8 +30,12 @@ void add_fresh_range(struct inclusive_range range) {
     }
   }
   if (j == max_ranges) die("too large");
-  ranges[j++] = range;
-  num_ranges = j;
+  num_ranges = j + 1;
+  while (j > 0 && range.last < ranges[j - 1].first) {
+    ranges[j] = ranges[j - 1];
+    j--;
+  }
+  ranges[j] = range;
 }
 
 void read_input() {
@@ -61,12 +65,14 @@ void read_input() {
 }
 
 bool is_fresh(unsigned long long id) {
-  const int n = num_ranges;
-  for (int i = 0; i < n; i++) {
-    struct inclusive_range range = ranges[i];
-    if (range.first <= id && id <= range.last) return true;
+  const struct inclusive_range* i = ranges;
+  int length = num_ranges;
+  while (length > 0) {
+    const int r = length % 2;
+    length /= 2;
+    i += (i[length].last < id) * (length + r);
   }
-  return false;
+  return i->first <= id && id <= i->last;
 }
 
 int main() {
