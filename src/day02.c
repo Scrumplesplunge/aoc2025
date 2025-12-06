@@ -68,10 +68,10 @@ int main() {
     i++;
     const char* const second = i;
     while (is_digit(*i)) i++;
-    if (i == second || (*i != ',' && *i != '\n')) die("bad input x");
+    if (i == second || (*i != ',' && *i != '\n')) die("bad input");
     const int second_n = i - second;
     i++;
-    if (second_n < first_n || first_n + 1 < second_n) die("bad range");
+    if (second_n < first_n || first_n + 1 < second_n) die("bad input");
     const int max_sequence_length = second_n / 2;
     assert(max_sequence_length <= 5);
 
