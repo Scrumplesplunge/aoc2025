@@ -10,9 +10,7 @@ static unsigned int read_uint_n(const char* in, int n) {
   return result;
 }
 
-static const unsigned long long pow10_data[] = {
-    1,       10,       100,       1000,       10000,      100000,
-    1000000, 10000000, 100000000, 1000000000, 10000000000};
+static const unsigned int pow10_data[] = {1, 10, 100, 1000, 10000, 100000};
 
 static unsigned long long pow10ull(unsigned n) {
   assert(n < sizeof(pow10_data) / sizeof(pow10_data[0]));
@@ -121,7 +119,8 @@ int main() {
         const unsigned long long x = b * (b + 1) / 2 - (a - 1) * a / 2;
         // Sum of all IDs with one of these sequences.
         unsigned long long sum = 0;
-        for (int i = 0; i < n; i += l) sum += x * pow10ull(i);
+        const unsigned long long k = pow10ull(l);
+        for (int i = 0; i < n; i += l) sum = k * sum + x;
         if (n / l == 2) part1 += sum;
 
         // Check how many times we already counted sequences of this length,
