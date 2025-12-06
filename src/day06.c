@@ -23,6 +23,7 @@ void read_input() {
     while (*i != '\n') i++;
     i++;
   }
+  if (num_lines < 2) die("bad input");
 }
 
 struct op {
@@ -46,9 +47,7 @@ struct op get_op(char op) {
   die("bad input");
 }
 
-int main() {
-  read_input();
-
+uint64 part1() {
   const int n = num_lines;
   char* is[max_lines];
   for (int i = 0; i < n; i++) is[i] = lines[i];
@@ -64,16 +63,60 @@ int main() {
     uint64 value = op.initial;
     for (int i = 0; i < num_lines - 1; i++) {
       uint32 x;
-      print("attempt to scan line %d at %c\n", i, *is[i]);
       is[i] = scan_uint(is[i], &x);
       if (!is[i]) die("bad input");
       value = op.apply(value, x);
     }
-    print("column %c result: %llu\n", *is[num_lines - 1], value);
     total += value;
   }
+  return total;
+}
 
-  print_ulongs(total, 0);
+uint64 part2() {
+  const int line_length = lines[1] - lines[0] - 1;
+
+  enum { max_values = 4 };
+  int num_values = 0;
+  uint64 values[max_values];
+
+  uint64 total = 0;
+  const char* ops = lines[num_lines - 1];
+  for (int i = line_length - 1; i >= 0; i--) {
+    // Parse the value from this column.
+    uint64 x = 0;
+    int digits = 0;
+    for (int j = 0; j < num_lines - 1; j++) {
+      const char c = lines[j][i];
+      if (c != ' ') {
+        digits++;
+        assert(is_digit(c));
+        x = 10 * x + (lines[j][i] - '0');
+      }
+    }
+    if (!digits) continue;
+    // Add the value to the list for this problem.
+    print("%llu\n", x);
+    if (num_values == max_values) die("bad input nv");
+    values[num_values++] = x;
+    // Check if this is the end of a single problem.
+    if (ops[i] != ' ') {
+      const struct op op = get_op(ops[i]);
+      uint64 value = op.initial;
+      for (int i = 0; i < num_values; i++) {
+        value = op.apply(value, values[i]);
+      }
+      print("%c -> %llu\n", ops[i], value);
+      total += value;
+      num_values = 0;
+    }
+  }
+  assert(num_values == 0);
+  return total;
+}
+
+int main() {
+  read_input();
+  print_ulongs(part1(), part2());
 }
 
 // 14270832890392589 too high
