@@ -140,7 +140,7 @@ __attribute__((format(printf, 1, 2))) void print(const char* restrict pattern,
   va_end(args);
 }
 
-void die(const char* message) {
+[[noreturn]] void die(const char* message) {
   write(STDERR_FILENO, message, strlen(message));
   exit(1);
 }
