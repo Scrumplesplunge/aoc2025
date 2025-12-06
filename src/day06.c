@@ -8,15 +8,17 @@ enum { buffer_size = 20 << 10 };
 char buffer[buffer_size];
 enum { max_lines = 8 };
 int num_lines;
-char* lines[max_lines];
+const char* lines[max_lines];
 
+// Read the input into a buffer and then initialize an array of pointers to
+// point at the start of each line of the input.
 void read_input() {
   const int length = read(STDIN_FILENO, buffer, buffer_size);
   if (length == 0 || length == sizeof(buffer) || buffer[length - 1] != '\n') {
     die("bad input");
   }
-  char* i = buffer;
-  char* const end = buffer + length;
+  const char* i = buffer;
+  const char* const end = buffer + length;
   while (i != end) {
     if (num_lines == max_lines) die("bad input");
     lines[num_lines++] = i;
@@ -25,6 +27,9 @@ void read_input() {
   }
   if (num_lines < 2) die("bad input");
 }
+
+// To handle the arithmetic, both `+` and `*` have implementations of the `op`
+// interface which can be retrieved with `get_op(x)`.
 
 struct op {
   uint64 initial;
@@ -47,9 +52,11 @@ struct op get_op(char op) {
   die("bad input");
 }
 
+// Iterate over columns of numbers. For each column, read a value from each line
+// and accumulate them using the correct operator.
 uint64 part1() {
   const int n = num_lines;
-  char* is[max_lines];
+  const char* is[max_lines];
   for (int i = 0; i < n; i++) is[i] = lines[i];
   uint64 total = 0;
   while (true) {
@@ -72,6 +79,11 @@ uint64 part1() {
   return total;
 }
 
+// Iterate over columns of characters. For each column, form a number from the
+// digits it contains and add it to the list of pending values. If the column
+// also contains an operator, apply it to the list of values to create an answer
+// for that problem and add it to the total before clearing the pending value
+// list.
 uint64 part2() {
   const int line_length = lines[1] - lines[0] - 1;
 
@@ -93,10 +105,9 @@ uint64 part2() {
         x = 10 * x + (lines[j][i] - '0');
       }
     }
-    if (!digits) continue;
+    if (digits == 0) continue;  // Blank line.
     // Add the value to the list for this problem.
-    print("%llu\n", x);
-    if (num_values == max_values) die("bad input nv");
+    if (num_values == max_values) die("bad input");
     values[num_values++] = x;
     // Check if this is the end of a single problem.
     if (ops[i] != ' ') {
@@ -105,7 +116,6 @@ uint64 part2() {
       for (int i = 0; i < num_values; i++) {
         value = op.apply(value, values[i]);
       }
-      print("%c -> %llu\n", ops[i], value);
       total += value;
       num_values = 0;
     }
@@ -118,5 +128,3 @@ int main() {
   read_input();
   print_ulongs(part1(), part2());
 }
-
-// 14270832890392589 too high
