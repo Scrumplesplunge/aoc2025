@@ -17,6 +17,17 @@ struct beam_row {
 };
 struct beam_row beams[2];
 
+int add_beam(struct beam* beams, int num_beams, int x,
+             unsigned long long num_timelines) {
+  assert(num_beams == 0 || beams[num_beams - 1].x <= x);
+  if (num_beams > 0 && beams[num_beams - 1].x == x) {
+    beams[num_beams - 1].num_timelines += num_timelines;
+  } else {
+    beams[num_beams++] = (struct beam){x, num_timelines};
+  }
+  return num_beams;
+}
+
 int main() {
   const int length = read(STDIN_FILENO, buffer, buffer_size);
   if (length == 0 || buffer[length - 1] != '\n') die("bad input");
@@ -41,44 +52,21 @@ int main() {
     struct beam_row* outgoing = &beams[y % 2];
     const int num_incoming_beams = incoming->num_beams;
     const char* row = buffer + y * (width + 1);
-    int num_outgoing_beams = 0;
+    int n = 0;
     for (int i = 0; i < num_incoming_beams; i++) {
       const int x = incoming->beams[i].x;
+      const unsigned long long num_timelines = incoming->beams[i].num_timelines;
       if (row[x] == '^') {
         // Beam is split.
         part1++;
         assert(1 <= x && x < width - 1);
-        if (num_outgoing_beams > 0 &&
-            outgoing->beams[num_outgoing_beams - 1].x == x - 1) {
-          // Left split merged with another beam.
-          outgoing->beams[num_outgoing_beams - 1].num_timelines +=
-              incoming->beams[i].num_timelines;
-        } else {
-          // Left split is a new beam.
-          outgoing->beams[num_outgoing_beams++] = (struct beam){
-              .x = x - 1,
-              .num_timelines = incoming->beams[i].num_timelines,
-          };
-        }
-        // Right split can never merge with a beam created by something to the
-        // left of the current beam.
-        outgoing->beams[num_outgoing_beams++] = (struct beam){
-            .x = x + 1,
-            .num_timelines = incoming->beams[i].num_timelines,
-        };
+        n = add_beam(outgoing->beams, n, x - 1, num_timelines);
+        n = add_beam(outgoing->beams, n, x + 1, num_timelines);
       } else {
-        if (num_outgoing_beams > 0 &&
-            outgoing->beams[num_outgoing_beams - 1].x == x) {
-          // Beam merged with a new beam created from a split to the left.
-          outgoing->beams[num_outgoing_beams - 1].num_timelines +=
-              incoming->beams[i].num_timelines;
-        } else {
-          // Beam continues downwards.
-          outgoing->beams[num_outgoing_beams++] = incoming->beams[i];
-        }
+        n = add_beam(outgoing->beams, n, x, num_timelines);
       }
     }
-    outgoing->num_beams = num_outgoing_beams;
+    outgoing->num_beams = n;
   }
 
   // Calculate the total number of timelines by summing up the number of
