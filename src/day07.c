@@ -45,19 +45,23 @@ int main() {
     for (int i = 0; i < num_incoming_beams; i++) {
       const int x = incoming->beams[i].x;
       if (row[x] == '^') {
+        // Beam is split.
         part1++;
         assert(1 <= x && x < width - 1);
-        // Avoid re-adding a beam that already exists.
         if (num_outgoing_beams > 0 &&
             outgoing->beams[num_outgoing_beams - 1].x == x - 1) {
+          // Left split merged with another beam.
           outgoing->beams[num_outgoing_beams - 1].num_timelines +=
               incoming->beams[i].num_timelines;
         } else {
+          // Left split is a new beam.
           outgoing->beams[num_outgoing_beams++] = (struct beam){
               .x = x - 1,
               .num_timelines = incoming->beams[i].num_timelines,
           };
         }
+        // Right split can never merge with a beam created by something to the
+        // left of the current beam.
         outgoing->beams[num_outgoing_beams++] = (struct beam){
             .x = x + 1,
             .num_timelines = incoming->beams[i].num_timelines,
@@ -65,15 +69,20 @@ int main() {
       } else {
         if (num_outgoing_beams > 0 &&
             outgoing->beams[num_outgoing_beams - 1].x == x) {
+          // Beam merged with a new beam created from a split to the left.
           outgoing->beams[num_outgoing_beams - 1].num_timelines +=
               incoming->beams[i].num_timelines;
         } else {
+          // Beam continues downwards.
           outgoing->beams[num_outgoing_beams++] = incoming->beams[i];
         }
       }
     }
     outgoing->num_beams = num_outgoing_beams;
   }
+
+  // Calculate the total number of timelines by summing up the number of
+  // timelines for each possible beam column in the bottom row.
   unsigned long long part2 = 0;
   const struct beam_row* final_row = &beams[(height - 1) % 2];
   for (int i = 0; i < final_row->num_beams; i++) {
