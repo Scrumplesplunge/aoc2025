@@ -5,8 +5,17 @@ enum { buffer_size = 21 << 10 };
 char buffer[buffer_size];
 
 enum { max_beams = 141 };
-int num_beams[2];
-unsigned char beams[2][max_beams];
+struct beam {
+  // Column containing the beam.
+  unsigned long long x : 8;
+  // Number of different timelines leading to a beam in this column.
+  unsigned long long num_timelines : 56;
+};
+struct beam_row {
+  int num_beams;
+  struct beam beams[max_beams];
+};
+struct beam_row beams[2];
 
 int main() {
   const int length = read(STDIN_FILENO, buffer, buffer_size);
@@ -20,46 +29,56 @@ int main() {
 
   for (int i = 0; i < width; i++) {
     if (buffer[i] == 'S') {
-      beams[0][num_beams[0]++] = i;
+      beams[0].beams[beams[0].num_beams++] =
+          (struct beam){.x = i, .num_timelines = 1};
       break;
     }
   }
 
   unsigned int part1 = 0;
   for (int y = 1; y < height; y++) {
-    const int num_incoming_beams = num_beams[(y - 1) % 2];
-    const unsigned char* incoming_beams = beams[(y - 1) % 2];
-    unsigned char* outgoing_beams = beams[y % 2];
+    const struct beam_row* incoming = &beams[(y - 1) % 2];
+    struct beam_row* outgoing = &beams[y % 2];
+    const int num_incoming_beams = incoming->num_beams;
     const char* row = buffer + y * (width + 1);
     int num_outgoing_beams = 0;
     for (int i = 0; i < num_incoming_beams; i++) {
-      const int x = incoming_beams[i];
-      if (x < 1 || width - 1 <= x) {
-        print("row y=%d beam x=%d\n", y, x);
-      }
+      const int x = incoming->beams[i].x;
       if (row[x] == '^') {
         part1++;
         assert(1 <= x && x < width - 1);
         // Avoid re-adding a beam that already exists.
-        if (num_outgoing_beams == 0 ||
-            outgoing_beams[num_outgoing_beams - 1] < x - 1) {
-          outgoing_beams[num_outgoing_beams++] = x - 1;
+        if (num_outgoing_beams > 0 &&
+            outgoing->beams[num_outgoing_beams - 1].x == x - 1) {
+          outgoing->beams[num_outgoing_beams - 1].num_timelines +=
+              incoming->beams[i].num_timelines;
+        } else {
+          outgoing->beams[num_outgoing_beams++] = (struct beam){
+              .x = x - 1,
+              .num_timelines = incoming->beams[i].num_timelines,
+          };
         }
-        outgoing_beams[num_outgoing_beams++] = x + 1;
+        outgoing->beams[num_outgoing_beams++] = (struct beam){
+            .x = x + 1,
+            .num_timelines = incoming->beams[i].num_timelines,
+        };
       } else {
-        if (num_outgoing_beams == 0 ||
-            outgoing_beams[num_outgoing_beams - 1] < x) {
-          outgoing_beams[num_outgoing_beams++] = x;
+        if (num_outgoing_beams > 0 &&
+            outgoing->beams[num_outgoing_beams - 1].x == x) {
+          outgoing->beams[num_outgoing_beams - 1].num_timelines +=
+              incoming->beams[i].num_timelines;
+        } else {
+          outgoing->beams[num_outgoing_beams++] = incoming->beams[i];
         }
       }
     }
-    num_beams[y % 2] = num_outgoing_beams;
-    print("%d beams:", num_outgoing_beams);
-    for (int i = 0; i < num_outgoing_beams; i++) {
-      print("\t%d", outgoing_beams[i]);
-    }
-    print("\n");
+    outgoing->num_beams = num_outgoing_beams;
+  }
+  unsigned long long part2 = 0;
+  const struct beam_row* final_row = &beams[(height - 1) % 2];
+  for (int i = 0; i < final_row->num_beams; i++) {
+    part2 += final_row->beams[i].num_timelines;
   }
 
-  print_uints(part1, 0);
+  print_ulongs(part1, part2);
 }
