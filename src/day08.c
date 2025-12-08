@@ -108,11 +108,6 @@ unsigned long long part1() {
   if (num_nodes * (num_nodes - 1) / 2 < 1000) die("bad input count");
   for (int i = 0; i < 1000; i++) {
     const struct edge e = edges[i];
-    print("%d <-> %d: (%d, %d, %d) <-> (%d, %d, %d): %llu\n",
-          e.a, e.b,
-          nodes[e.a].x, nodes[e.a].y, nodes[e.a].z,
-          nodes[e.b].x, nodes[e.b].y, nodes[e.b].z,
-          e.distance);
     merge_nodes(e.a, e.b);
   }
   // Enumerate all the roots.
@@ -120,14 +115,7 @@ unsigned long long part1() {
   for (int i = 0; i < num_nodes; i++) {
     if (find_root(i) == i) circuits[num_circuits++] = i;
   }
-  if (num_circuits < 3) die("bad input circ");
-  int total = 0;
-  for (int i = 0; i < num_circuits; i++) {
-    total += nodes[circuits[i]].size;
-    print("  circuit[%d]: nodes[%d] with size %d\n",
-          i, circuits[i], nodes[circuits[i]].size);
-  }
-  if (total != num_nodes) die("oopsie");
+  if (num_circuits < 3) die("bad input");
   // Find the biggest three.
   unsigned short big[3];
   for (int i = 0; i < 3; i++) {
@@ -138,10 +126,6 @@ unsigned long long part1() {
     big[i] = circuits[biggest];
     circuits[biggest] = circuits[--num_circuits];
   }
-  print("biggest nodes: node[%d] (%d), node[%d] (%d), node[%d] (%d)\n",
-        big[0], nodes[big[0]].size,
-        big[1], nodes[big[1]].size,
-        big[2], nodes[big[2]].size);
   return nodes[big[0]].size * nodes[big[1]].size * nodes[big[2]].size;
 }
 
@@ -156,7 +140,7 @@ unsigned long long part2() {
       return a * b;
     }
   }
-  die("bad input");
+  die("bug");
 }
 
 int main() {
@@ -165,5 +149,3 @@ int main() {
   const unsigned long long b = part2();
   print_ulongs(a, b);
 }
-
-// part 2: 3784310924 too low
