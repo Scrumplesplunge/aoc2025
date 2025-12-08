@@ -1,0 +1,153 @@
+#include "core/assert.h"
+#include "core/io.h"
+
+struct node {
+  unsigned short parent, size;
+  int x, y, z;
+};
+
+struct edge {
+  unsigned long long distance;
+  unsigned short a, b;
+};
+
+enum { max_nodes = 1024, max_edges = max_nodes * (max_nodes - 1) / 2 };
+int num_nodes;
+struct node nodes[max_nodes];
+struct edge edges[max_edges];
+
+void sift_down(struct edge* values, int n, int i) {
+  const struct edge x = values[i];
+  while (true) {
+    int c = 2 * i + 1;
+    if (c >= n) break;
+    if (c + 1 < n && values[c + 1].distance > values[c].distance) c++;
+    if (values[c].distance <= x.distance) break;
+    values[i] = values[c];
+    i = c;
+  }
+  values[i] = x;
+}
+
+void sort(struct edge* values, int n) {
+  for (int i = n / 2; i >= 0; i--) sift_down(values, n, i);
+  for (int i = n - 1; i >= 1; i--) {
+    const struct edge x = values[0];
+    values[0] = values[i];
+    values[i] = x;
+    sift_down(values, i, 0);
+  }
+  for (int i = 1; i < n; i++) {
+    if (values[i - 1].distance > values[i].distance) die("sort is broken");
+  }
+}
+
+unsigned short find_root(unsigned short node) {
+  unsigned short root = node;
+  while (nodes[root].parent != root) root = nodes[root].parent;
+  while (node != root) {
+    unsigned short temp = nodes[node].parent;
+    nodes[node].parent = root;
+    node = temp;
+  }
+  return root;
+}
+
+void merge_nodes(unsigned short a, unsigned short b) {
+  a = find_root(a);
+  b = find_root(b);
+  if (a == b) return;
+  if (nodes[a].size >= nodes[b].size) {
+    nodes[b].parent = a;
+    nodes[a].size += nodes[b].size;
+    print("adding %d units to root %d\n", nodes[b].size, a);
+  } else {
+    nodes[a].parent = b;
+    nodes[b].size += nodes[a].size;
+    print("adding %d units to root %d\n", nodes[a].size, b);
+  }
+}
+
+void read_input() {
+  enum { buffer_size = 32 << 10 };
+  char buffer[buffer_size];
+  const int n = read(STDIN_FILENO, buffer, buffer_size);
+  if (n == 0 || buffer[n - 1] != '\n') die("bad input");
+
+  const char* i = buffer;
+  const char* const end = i + n;
+  while (i != end) {
+    unsigned int x, y, z;
+    i = scan_uint(i, &x);
+    if (!i || *i++ != ',') die("bad input");
+    i = scan_uint(i, &y);
+    if (!i || *i++ != ',') die("bad input");
+    i = scan_uint(i, &z);
+    if (!i || *i++ != '\n') die("bad input");
+    if (num_nodes == max_nodes) die("bad input");
+    const unsigned short node = num_nodes++;
+    nodes[node] = (struct node){node, 1, x, y, z};
+  }
+
+  int num_edges = 0;
+  for (int a = 0; a < num_nodes; a++) {
+    for (int b = a + 1; b < num_nodes; b++) {
+      const long long dx = nodes[a].x - nodes[b].x;
+      const long long dy = nodes[a].y - nodes[b].y;
+      const long long dz = nodes[a].z - nodes[b].z;
+      const unsigned long long distance = dx * dx + dy * dy + dz * dz;
+      edges[num_edges++] = (struct edge){distance, a, b};
+    }
+  }
+  assert(num_edges == num_nodes * (num_nodes - 1) / 2);
+  sort(edges, num_edges);
+}
+
+unsigned short circuits[max_nodes];
+unsigned long long part1() {
+  if (num_nodes * (num_nodes - 1) / 2 < 1000) die("bad input count");
+  for (int i = 0; i < 1000; i++) {
+    const struct edge e = edges[i];
+    print("%d <-> %d: (%d, %d, %d) <-> (%d, %d, %d): %llu\n",
+          e.a, e.b,
+          nodes[e.a].x, nodes[e.a].y, nodes[e.a].z,
+          nodes[e.b].x, nodes[e.b].y, nodes[e.b].z,
+          e.distance);
+    merge_nodes(e.a, e.b);
+  }
+  // Enumerate all the roots.
+  int num_circuits = 0;
+  for (int i = 0; i < num_nodes; i++) {
+    if (find_root(i) == i) circuits[num_circuits++] = i;
+  }
+  if (num_circuits < 3) die("bad input circ");
+  int total = 0;
+  for (int i = 0; i < num_circuits; i++) {
+    total += nodes[circuits[i]].size;
+    print("  circuit[%d]: nodes[%d] with size %d\n",
+          i, circuits[i], nodes[circuits[i]].size);
+  }
+  if (total != num_nodes) die("oopsie");
+  // Find the biggest three.
+  unsigned short big[3];
+  for (int i = 0; i < 3; i++) {
+    unsigned short biggest = 0;
+    for (int j = 1; j < num_circuits; j++) {
+      if (nodes[circuits[j]].size > nodes[circuits[biggest]].size) biggest = j;
+    }
+    big[i] = circuits[biggest];
+    circuits[biggest] = circuits[--num_circuits];
+  }
+  print("biggest nodes: node[%d] (%d), node[%d] (%d), node[%d] (%d)\n",
+        big[0], nodes[big[0]].size,
+        big[1], nodes[big[1]].size,
+        big[2], nodes[big[2]].size);
+  return nodes[big[0]].size * nodes[big[1]].size * nodes[big[2]].size;
+}
+
+int main() {
+  read_input();
+  print_uints(part1(), 0);
+}
+
+// 346680 too high
