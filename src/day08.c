@@ -16,30 +16,33 @@ int num_nodes;
 struct node nodes[max_nodes];
 struct edge edges[max_edges];
 
-void sift_down(struct edge* values, int n, int i) {
-  const struct edge x = values[i];
-  while (true) {
-    int c = 2 * i + 1;
-    if (c >= n) break;
-    if (c + 1 < n && values[c + 1].distance > values[c].distance) c++;
-    if (values[c].distance <= x.distance) break;
-    values[i] = values[c];
-    i = c;
+int pivot(struct edge* values, int n) {
+  assert(n > 0);
+  return n / 2;
+}
+
+int partition(struct edge* values, int n, int pivot) {
+  const struct edge p = values[pivot];
+  values[pivot] = values[--n];
+  int j = 0;
+  for (int i = 0; i < n; i++) {
+    if (values[i].distance <= p.distance) {
+      const struct edge temp = values[i];
+      values[i] = values[j];
+      values[j] = temp;
+      j++;
+    }
   }
-  values[i] = x;
+  values[n++] = values[j];
+  values[j] = p;
+  return j;
 }
 
 void sort(struct edge* values, int n) {
-  for (int i = n / 2; i >= 0; i--) sift_down(values, n, i);
-  for (int i = n - 1; i >= 1; i--) {
-    const struct edge x = values[0];
-    values[0] = values[i];
-    values[i] = x;
-    sift_down(values, i, 0);
-  }
-  for (int i = 1; i < n; i++) {
-    if (values[i - 1].distance > values[i].distance) die("sort is broken");
-  }
+  if (n < 2) return;
+  const int mid = partition(values, n, pivot(values, n));
+  sort(values, mid);
+  sort(values + mid + 1, n - mid - 1);
 }
 
 unsigned short find_root(unsigned short node) {
