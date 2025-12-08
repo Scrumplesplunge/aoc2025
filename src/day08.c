@@ -53,18 +53,18 @@ unsigned short find_root(unsigned short node) {
   return root;
 }
 
-void merge_nodes(unsigned short a, unsigned short b) {
+unsigned short merge_nodes(unsigned short a, unsigned short b) {
   a = find_root(a);
   b = find_root(b);
-  if (a == b) return;
+  if (a == b) return a;
   if (nodes[a].size >= nodes[b].size) {
     nodes[b].parent = a;
     nodes[a].size += nodes[b].size;
-    print("adding %d units to root %d\n", nodes[b].size, a);
+    return a;
   } else {
     nodes[a].parent = b;
     nodes[b].size += nodes[a].size;
-    print("adding %d units to root %d\n", nodes[a].size, b);
+    return b;
   }
 }
 
@@ -145,9 +145,25 @@ unsigned long long part1() {
   return nodes[big[0]].size * nodes[big[1]].size * nodes[big[2]].size;
 }
 
-int main() {
-  read_input();
-  print_uints(part1(), 0);
+unsigned long long part2() {
+  const int num_edges = num_nodes * (num_nodes - 1) / 2;
+  for (int i = 1000; i < num_edges; i++) {
+    const struct edge e = edges[i];
+    const unsigned short root = merge_nodes(e.a, e.b);
+    if (nodes[root].size == num_nodes) {
+      const unsigned long long a = nodes[e.a].x;
+      const unsigned long long b = nodes[e.b].x;
+      return a * b;
+    }
+  }
+  die("bad input");
 }
 
-// 346680 too high
+int main() {
+  read_input();
+  const unsigned long long a = part1();
+  const unsigned long long b = part2();
+  print_ulongs(a, b);
+}
+
+// part 2: 3784310924 too low
