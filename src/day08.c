@@ -3,7 +3,7 @@
 
 struct node {
   unsigned short parent, size;
-  int x, y, z;
+  int x;
 };
 
 struct edge {
@@ -68,7 +68,10 @@ unsigned short merge_nodes(unsigned short a, unsigned short b) {
   }
 }
 
-void read_input() {
+enum { max_points = 1000 };
+struct point { int x, y, z; };
+
+int read_points(struct point* points) {
   enum { buffer_size = 32 << 10 };
   char buffer[buffer_size];
   const int n = read(STDIN_FILENO, buffer, buffer_size);
@@ -76,6 +79,8 @@ void read_input() {
 
   const char* i = buffer;
   const char* const end = i + n;
+
+  int num_points = 0;
   while (i != end) {
     unsigned int x, y, z;
     i = scan_uint(i, &x);
@@ -84,17 +89,23 @@ void read_input() {
     if (!i || *i++ != ',') die("bad input");
     i = scan_uint(i, &z);
     if (!i || *i++ != '\n') die("bad input");
-    if (num_nodes == max_nodes) die("bad input");
-    const unsigned short node = num_nodes++;
-    nodes[node] = (struct node){node, 1, x, y, z};
+    if (num_points == max_points) die("bad input");
+    points[num_points++] = (struct point){x, y, z};
   }
+  return num_points;
+}
 
+void read_input() {
+  struct point points[max_points];
+  const int num_points = read_points(points);
+  num_nodes = num_points;
   int num_edges = 0;
-  for (int a = 0; a < num_nodes; a++) {
-    for (int b = a + 1; b < num_nodes; b++) {
-      const long long dx = nodes[a].x - nodes[b].x;
-      const long long dy = nodes[a].y - nodes[b].y;
-      const long long dz = nodes[a].z - nodes[b].z;
+  for (int a = 0; a < num_points; a++) {
+    nodes[a] = (struct node){a, 1, points[a].x};
+    for (int b = a + 1; b < num_points; b++) {
+      const long long dx = points[a].x - points[b].x;
+      const long long dy = points[a].y - points[b].y;
+      const long long dz = points[a].z - points[b].z;
       const unsigned long long distance = dx * dx + dy * dy + dz * dz;
       edges[num_edges++] = (struct edge){distance, a, b};
     }
