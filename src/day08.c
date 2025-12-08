@@ -14,35 +14,33 @@ struct edge {
 enum { max_nodes = 1024, max_edges = max_nodes * (max_nodes - 1) / 2 };
 int num_nodes;
 struct node nodes[max_nodes];
+
+int num_edges;
 struct edge edges[max_edges];
 
-int pivot(struct edge* values, int n) {
-  assert(n > 0);
-  return n / 2;
-}
-
-int partition(struct edge* values, int n, int pivot) {
-  const struct edge p = values[pivot];
-  values[pivot] = values[--n];
-  int j = 0;
-  for (int i = 0; i < n; i++) {
-    if (values[i].distance <= p.distance) {
-      const struct edge temp = values[i];
-      values[i] = values[j];
-      values[j] = temp;
-      j++;
-    }
+void sift_down(struct edge* values, int n, int i) {
+  const struct edge x = values[i];
+  while (true) {
+    int c = 2 * i + 1;
+    if (c >= n) break;
+    if (c + 1 < n && values[c + 1].distance < values[c].distance) c++;
+    if (values[c].distance >= x.distance) break;
+    values[i] = values[c];
+    i = c;
   }
-  values[n++] = values[j];
-  values[j] = p;
-  return j;
+  values[i] = x;
 }
 
-void sort(struct edge* values, int n) {
-  if (n < 2) return;
-  const int mid = partition(values, n, pivot(values, n));
-  sort(values, mid);
-  sort(values + mid + 1, n - mid - 1);
+void heapify(struct edge* values, int n) {
+  for (int i = n / 2; i >= 0; i--) sift_down(values, n, i);
+}
+
+struct edge pop(struct edge* values, int* n) {
+  assert(*n > 0);
+  struct edge result = values[0];
+  values[0] = values[--*n];
+  sift_down(values, *n, 0);
+  return result;
 }
 
 unsigned short find_root(unsigned short node) {
@@ -102,7 +100,6 @@ void read_input() {
   struct point points[max_points];
   const int num_points = read_points(points);
   num_nodes = num_points;
-  int num_edges = 0;
   for (int a = 0; a < num_points; a++) {
     nodes[a] = (struct node){a, 1, points[a].x};
     for (int b = a + 1; b < num_points; b++) {
@@ -113,15 +110,14 @@ void read_input() {
       edges[num_edges++] = (struct edge){distance, a, b};
     }
   }
-  assert(num_edges == num_nodes * (num_nodes - 1) / 2);
-  sort(edges, num_edges);
+  heapify(edges, num_edges);
 }
 
 unsigned short circuits[max_nodes];
 unsigned long long part1() {
   if (num_nodes * (num_nodes - 1) / 2 < 1000) die("bad input count");
   for (int i = 0; i < 1000; i++) {
-    const struct edge e = edges[i];
+    const struct edge e = pop(edges, &num_edges);
     merge_nodes(e.a, e.b);
   }
   // Enumerate all the roots.
@@ -144,9 +140,8 @@ unsigned long long part1() {
 }
 
 unsigned long long part2() {
-  const int num_edges = num_nodes * (num_nodes - 1) / 2;
-  for (int i = 1000; i < num_edges; i++) {
-    const struct edge e = edges[i];
+  while (num_edges > 0) {
+    const struct edge e = pop(edges, &num_edges);
     const unsigned short root = merge_nodes(e.a, e.b);
     if (nodes[root].size == num_nodes) {
       const unsigned long long a = nodes[e.a].x;
