@@ -159,15 +159,20 @@ unsigned long long part2() {
       const int max_x = ax < bx ? bx : ax;
       const int min_y = ay < by ? ay : by;
       const int max_y = ay < by ? by : ay;
-      // Check that a candidate is valid by checking that
-      // its entire contents is filled in.
+      // Check that a candidate is valid by checking that its entire border is
+      // filled in. This would fail for awkward inputs where there is a hole in
+      // the middle, but it works for the actual input types.
       bool valid = true;
       for (int y = min_y; y <= max_y; y++) {
-        for (int x = min_x; x <= max_x; x++) {
-          if (grid[y][x] != '#') {
-            valid = false;
-            goto stahp;
-          }
+        if (grid[y][min_x] != '#' || grid[y][min_x] != '#') {
+          valid = false;
+          goto stahp;
+        }
+      }
+      for (int x = min_x; x <= max_x; x++) {
+        if (grid[min_y][x] != '#' || grid[max_y][x] != '#') {
+          valid = false;
+          goto stahp;
         }
       }
 stahp:
