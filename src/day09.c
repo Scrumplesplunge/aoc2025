@@ -46,140 +46,6 @@ unsigned long long part1() {
   return largest_area;
 }
 
-// Original plan (doesn't work):
-//
-// Handle border thickness by:
-//
-//   * Initially treating borders as excluded.
-//   * Buffing the biggest rect by +1 on all sides.
-//
-// Overall plan:
-//
-//   * Build a list of rectangles describing the inside area. This is done by
-//     iteratively adding or removing rectangles which span all the way from
-//     x=0 out to two given vertices on a vertical edge and keeping track of
-//     the number of layers in any given subrectangle. Once all edges are
-//     processed, there should only be rectangles with density 1 or -1 left,
-//     depending on whether the vertices are ordered clockwise or anticlockwise.
-//   * Iterate over all pairs of vertices and ignore any rectangle which is not
-//     entirely inside the area covered by the rectangle list.
-
-// struct rect {
-//   int x_min, x_max, y_min, y_max, count;
-// };
-// enum { max_rects = 2000 };
-// int num_rects;
-// struct rect rects[max_rects];
-// 
-// bool check_rects() {
-//   for (int i = 0, n = num_rects; i < n; i++) {
-//     const struct rect a = rects[i];
-//     for (int j = i + 1; j < n; j++) {
-//       const struct rect b = rects[j];
-//       if (a.x_max <= b.x_min || b.x_max <= a.x_min ||
-//           a.y_max <= b.y_min || b.y_max <= a.y_min) {
-//         // Rectangles do not overlap.
-//         continue;
-//       }
-//       die("bug: overlap in rect list");
-//     }
-//   }
-//   return true;
-// }
-// 
-// void add_rect(struct rect new_rect) {
-//   const int initial_num_rects = num_rects;
-//   // Partially or fully remove rects which overlap the argument.
-//   int j = 0;
-//   for (int i = 0; i < initial_num_rects; i++) {
-//     struct rect rect = rects[i];
-//     if (rect.x_max <= new_rect.x_min || new_rect.x_max <= rect.x_min ||
-//         rect.y_max <= new_rect.y_min || new_rect.y_max <= rect.y_min) {
-//       // Rectangles do not overlap.
-//       rects[j++] = rect;
-//       continue;
-//     }
-//     if (new_rect.x_min <= rect.x_min && rect.x_max <= new_rect.x_max &&
-//         new_rect.y_min <= rect.y_min && rect.y_max <= new_rect.y_max) {
-//       // Fully new_rect.
-//       continue;
-//     }
-//     if (num_rects + 4 > max_rects) die("bad input too big");
-//     if (rect.y_min < new_rect.y_min) {
-//       struct rect above = rect;
-//       above.y_max = new_rect.y_min;
-//       rects[num_rects++] = above;
-//       rect.y_min = new_rect.y_min;
-//     }
-//     if (new_rect.y_max < rect.y_max) {
-//       struct rect below = rect;
-//       below.y_min = new_rect.y_max;
-//       rects[num_rects++] = below;
-//       rect.y_max = new_rect.y_max;
-//     }
-//     if (rect.x_min < new_rect.x_min) {
-//       struct rect left = rect;
-//       left.x_max = new_rect.x_min;
-//       rects[num_rects++] = left;
-//       rect.x_min = new_rect.x_min;
-//     }
-//     if (new_rect.x_max < rect.x_max) {
-//       struct rect right = rect;
-//       right.x_min = new_rect.x_max;
-//       rects[num_rects++] = right;
-//       rect.x_max = new_rect.x_min;
-//     }
-//     rect.count += new_rect.count;
-//     // nah mate this bit would be too hard -- need to also handle fragmenting
-//     // the remaining parts of the new_rect...
-//     if (
-//   }
-//   while (j < initial_num_rects && initial_num_rects < num_rects) {
-//     rects[j++] = rects[--num_rects];
-//   }
-//   assert(check_rects());
-// }
-// 
-// void add_rect(struct rect x) {
-//   if (num_rects == max_rects) die("bad input");
-//   remove_rect(x);
-//   rects[num_rects++] = x;
-//   assert(check_rects());
-// }
-// 
-// unsigned long long part2() {
-//   // Ignoring border thickness, compute the contained area.
-//   const int n = num_points;
-//   for (int i = 1; i < n; i++) {
-//     const struct point a = points[i - 1];
-//     const struct point b = points[i];
-//     assert(a.x == b.x || a.y == b.y);
-//     if (a.x != b.x) continue;
-//     if (a.y < b.y) {
-//       add_rect((struct rect){
-//           .x_min = 0,
-//           .x_max = a.x,
-//           .y_min = a.y,
-//           .y_max = b.y,
-//       });
-//     } else {
-//       remove_rect((struct rect){
-//           .x_min = 0,
-//           .x_max = a.x,
-//           .y_min = b.y,
-//           .y_max = a.y,
-//       });
-//     }
-//   }
-// }
-
-// New plan:
-//
-//   * Compact the grid by condensing blank rows or columns into a single
-//     representative. This works because any consecutive sequence of blank
-//     rows or columns must be identical.
-//   * Flood-fill the outside area doesn't work because there might be holes.
-
 long long clockwise_area() {
   long long area = 0;
   for (int i = 1, n = num_points; i < n; i++) {
@@ -227,10 +93,9 @@ unsigned long long part2() {
   assert(++size_x <= condensed_grid_size);
   assert(++size_y <= condensed_grid_size);
   memset(grid, '.', sizeof(grid));
-  print("condensed size: (%d, %d)\n", size_x, size_y);
   const bool is_clockwise = clockwise_area() > 0;
-  print("grid is %s\n", is_clockwise ? "clockwise" : "anticlockwise");
-  // Render the condensed grid.
+  // Render the condensed grid with a border of `#` and a layer of `!` on the
+  // inside edge. The `!` will be used to seed a flood-fill later.
   for (int i = 0; i < n; i++) {
     const struct point a = points[i == 0 ? n - 1 : i - 1];
     const struct point b = points[i];
@@ -256,7 +121,7 @@ unsigned long long part2() {
       }
     }
   }
-  // Fill the inside area.
+  // Seed the flood-fill queue with all of the inside edge.
   int tail = 0;
   for (int y = 0; y < size_y; y++) {
     for (int x = 0; x < size_x; x++) {
@@ -266,6 +131,7 @@ unsigned long long part2() {
       }
     }
   }
+  // Fill the inside area.
   int head = 0;
   while (head < tail) {
     const struct vec p = queue[head++];
@@ -293,6 +159,8 @@ unsigned long long part2() {
       const int max_x = ax < bx ? bx : ax;
       const int min_y = ay < by ? ay : by;
       const int max_y = ay < by ? by : ay;
+      // Check that a candidate is valid by checking that
+      // its entire contents is filled in.
       bool valid = true;
       for (int y = min_y; y <= max_y; y++) {
         for (int x = min_x; x <= max_x; x++) {
@@ -313,13 +181,6 @@ stahp:
   }
   return largest_area;
 }
-
-// New new plan:
-//
-//   * figure out whether the input is clockwise or not by computing the area.
-//   * next, build rectangles representing "inside".
-//   * finally, check all candidates against "inside".
-//   * but hard
 
 int main() {
   read_input();
