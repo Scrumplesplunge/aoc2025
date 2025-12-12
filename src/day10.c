@@ -1,12 +1,15 @@
+#include "core/assert.h"
 #include "core/io.h"
 
 typedef unsigned short uint16;
 
-enum { max_buttons = 14 };
+enum { max_buttons = 14, max_size = 16 };
 struct machine {
+  uint16 size;
   uint16 target;
   uint16 num_buttons;
   uint16 buttons[max_buttons];
+  uint16 joltages[max_size];
 };
 
 enum { max_machines = 200 };
@@ -27,9 +30,9 @@ void read_input() {
     struct machine* const m = &machines[num_machines++];
     if (*i++ != '[') die("bad input");
     // Read the target light sequence.
-    uint16 next_bit = 1;
+    unsigned int next_bit = 1;
     while (*i == '.' || *i == '#') {
-      if (next_bit == (1 << max_buttons)) die("bad input mask size");
+      if (next_bit == (1 << max_size)) die("bad input mask size");
       if (*i == '#') m->target |= next_bit;
       next_bit <<= 1;
       i++;
@@ -51,7 +54,14 @@ void read_input() {
     }
     if (*i++ != '{') die("bad input syntax4");
     // Skip the joltages for now.
-    while (*i++ != '}') {}
+    do {
+      if (m->size == max_size) die("bad input joltage count");
+      unsigned int value;
+      i = scan_uint(i, &value);
+      if (!i) die("bad input syntax6");
+      m->joltages[m->size++] = value;
+      if (*i != '}' && *i != ',') die("bad input syntax7");
+    } while (*i++ == ',');
     if (*i++ != '\n') die("bad input syntax5");
   }
 }
@@ -82,7 +92,204 @@ int part1() {
   return total;
 }
 
+struct table {
+  // Number of rows in the Tableau.
+  int num_rows;
+  // Number of columns **including the RHS**
+  int num_columns;
+  // Simplex Tableau:
+  // | b1    -b1  1 0 0  0 | 1 |
+  // | ..     ..  0 1 0  0 | 1 |
+  // | bN    -bN  0 0 1  0 | 1 |
+  // | -t^T  t^T  0 0 0  1 | 0 |
+  int cells[max_buttons + 1][2 * max_size + max_buttons + 2];
+};
+
+void swap(int* a, int* b) {
+  int temp = *a;
+  *a = *b;
+  *b = temp;
+}
+
+void swap_rows(struct table* t, int a, int b) {
+  for (int i = 0, c = t->num_columns; i < c; i++) {
+    swap(&t->cells[a][i], &t->cells[b][i]);
+  }
+}
+
+int abs(int x) { return x < 0 ? -x : x; }
+
+int gcd(int a, int b) {
+  while (b != 0) {
+    const int temp = b;
+    b = a % b;
+    a = temp;
+  }
+  return a;
+}
+
+void reduce_row(struct table* t, int row) {
+  int divisor = 0;
+  const int n = t->num_columns;
+  for (int i = 0; i < n; i++) {
+    const int v = abs(t->cells[row][i]);
+    if (v == 0) continue;
+    if (divisor == 0) {
+      divisor = v;
+    } else {
+      divisor = gcd(divisor, v);
+    }
+  }
+  if (divisor == 0) return;
+  for (int i = 0; i < n; i++) t->cells[row][i] /= divisor;
+}
+
+int lcm(int a, int b) { return a * b / gcd(a, b); }
+
+void print_table(const struct table* table) {
+  for (int r = 0; r < table->num_rows; r++) {
+    for (int c = 0; c < table->num_columns; c++) {
+      print("\t%d", table->cells[r][c]);
+    }
+    print("\n");
+  }
+}
+
+int pivot_column(const struct table* table) {
+  const int* cost_row = table->cells[table->num_rows - 1];
+  const int n = table->num_columns;
+  int best = -1;
+  int best_value = 0;
+  for (int i = 0; i < n; i++) {
+    if (cost_row[i] < best_value) {
+      best = i;
+      best_value = cost_row[i];
+    }
+  }
+  return best;
+}
+
+int pivot_row(const struct table* table, int column) {
+  int best = -1;
+  int best_n = 0, best_d = 1;
+  for (int i = 0, r = table->num_rows - 1; i < r; i++) {
+    const int d = table->cells[i][column];
+    if (d <= 0) continue;
+    const int n = table->cells[i][table->num_columns - 1];
+    if (best == -1 || best_d * n < best_n * d) {
+      best = i;
+      best_n = n;
+      best_d = d;
+    }
+  }
+  return best;
+}
+
+int part2() {
+  int total = 0;
+  for (int i = 0, n = num_machines; i < n; i++) {
+    // Build the matrix.
+    const struct machine* machine = &machines[i];
+    struct table table = {
+        .num_rows = machine->num_buttons + 1,
+        .num_columns = 2 * machine->size + machine->num_buttons + 2};
+    // Build the Simplex Tableau
+    for (int b = 0; b < machine->num_buttons; b++) {
+      int* row = table.cells[b];
+      for (int i = 0; i < machine->size; i++) {
+        const int x = (machine->buttons[b] >> i) & 1;
+        row[i] = x;
+        row[i + machine->size] = -x;
+      }
+      for (int i = 0; i < machine->num_buttons; i++) {
+        row[2 * machine->size + i] = 0;
+      }
+      row[2 * machine->size + b] = 1;
+      row[2 * machine->size + machine->num_buttons] = 0;
+      row[2 * machine->size + machine->num_buttons + 1] = 1;
+    }
+    {
+      int* row = table.cells[machine->num_buttons];
+      for (int i = 0; i < machine->size; i++) {
+        const int t = machine->joltages[i];
+        row[i] = -t;
+        row[i + machine->size] = t;
+      }
+      for (int i = 0; i < machine->num_buttons; i++) {
+        row[2 * machine->size + i] = 0;
+      }
+      row[2 * machine->size + machine->num_buttons] = 1;
+      row[2 * machine->size + machine->num_buttons + 1] = 0;
+    }
+    print("initial:\n");
+    print_table(&table);
+    // Reduce the table.
+    while (true) {
+      const int c = pivot_column(&table);
+      if (c == -1) break;
+      const int r = pivot_row(&table, c);
+      if (r == -1) die("unsolvable");
+      const int* pivot_row = table.cells[r];
+      const int pivot_factor = pivot_row[c];
+      // print("pivot on column %d, row %d:\n", c, r);
+      for (int i = 0; i < table.num_rows; i++) {
+        if (i == r) continue;
+        int* row = table.cells[i];
+        const int row_factor = row[c];
+        if (row_factor == 0) continue;
+        // print("row %d has factor %d\n", i, row_factor);
+        for (int j = 0; j < table.num_columns; j++) {
+          const int result = pivot_factor * row[j] - row_factor * pivot_row[j];
+          // if (j == c || j == table.num_columns - 1)
+          //   print("row[%d] = %d * %d - %d * %d = %d\n",
+          //       j, pivot_factor, row[j], row_factor, pivot_row[j], result);
+          row[j] = result;
+        }
+        assert(row[table.num_columns - 1] >= 0);
+        assert(row[c] == 0);
+        reduce_row(&table, i);
+      }
+    }
+    print("optimal:\n");
+    print_table(&table);
+    // Check our answer.
+    int counters[max_size] = {};
+    const int* answer = table.cells[table.num_rows - 1] + 2 * machine->size;
+    print("\n");
+    for (int i = 0; i < machine->num_buttons; i++) {
+      print("button[%d]", i);
+      const uint16 b = machine->buttons[i];
+      const int k = answer[i] / answer[machine->num_buttons];
+      for (int j = 0; j < machine->size; j++) {
+        print("\t%d", (b >> j) & 1);
+        if ((b >> j) & 1) counters[j] += k;
+      }
+      print("\n");
+    }
+    print("expected ");
+    for (int i = 0; i < machine->size; i++) {
+      print("\t%d", machine->joltages[i]);
+    }
+    print("\nactual   ");
+    for (int i = 0; i < machine->size; i++) {
+      print("\t%d", counters[i]);
+    }
+    print("\ndiff     ");
+    for (int i = 0; i < machine->size; i++) {
+      print("\t%d", machine->joltages[i] - counters[i]);
+    }
+    print("\n");
+    const int num = table.cells[table.num_rows - 1][table.num_columns - 1];
+    const int den = table.cells[table.num_rows - 1][table.num_columns - 2];
+    total += num / den;
+  }
+  return total;
+}
+
 int main() {
   read_input();
-  print_uints(part1(), 0);
+  print_uints(part1(), part2());
 }
+
+// 33035 too high
+// 21772 wrong
