@@ -98,10 +98,10 @@ struct table {
   // Number of columns **including the RHS**
   int num_columns;
   // Simplex Tableau:
+  // | -t^T  t^T  0 0 0  1 | 0 |
   // | b1    -b1  1 0 0  0 | 1 |
   // | ..     ..  0 1 0  0 | 1 |
   // | bN    -bN  0 0 1  0 | 1 |
-  // | -t^T  t^T  0 0 0  1 | 0 |
   int cells[max_buttons + 1][2 * max_size + max_buttons + 2];
 };
 
@@ -156,7 +156,7 @@ void print_table(const struct table* table) {
 }
 
 int pivot_column(const struct table* table) {
-  const int* cost_row = table->cells[table->num_rows - 1];
+  const int* cost_row = table->cells[0];
   const int n = table->num_columns;
   int best = -1;
   int best_value = 0;
@@ -172,7 +172,7 @@ int pivot_column(const struct table* table) {
 int pivot_row(const struct table* table, int column) {
   int best = -1;
   int best_n = 0, best_d = 1;
-  for (int i = 0, r = table->num_rows - 1; i < r; i++) {
+  for (int i = 1, r = table->num_rows; i < r; i++) {
     const int d = table->cells[i][column];
     if (d <= 0) continue;
     const int n = table->cells[i][table->num_columns - 1];
@@ -194,8 +194,21 @@ int part2() {
         .num_rows = machine->num_buttons + 1,
         .num_columns = 2 * machine->size + machine->num_buttons + 2};
     // Build the Simplex Tableau
+    {
+      int* row = table.cells[0];
+      for (int i = 0; i < machine->size; i++) {
+        const int t = machine->joltages[i];
+        row[i] = -t;
+        row[i + machine->size] = t;
+      }
+      for (int i = 0; i < machine->num_buttons; i++) {
+        row[2 * machine->size + i] = 0;
+      }
+      row[2 * machine->size + machine->num_buttons] = 1;
+      row[2 * machine->size + machine->num_buttons + 1] = 0;
+    }
     for (int b = 0; b < machine->num_buttons; b++) {
-      int* row = table.cells[b];
+      int* row = table.cells[b + 1];
       for (int i = 0; i < machine->size; i++) {
         const int x = (machine->buttons[b] >> i) & 1;
         row[i] = x;
@@ -207,19 +220,6 @@ int part2() {
       row[2 * machine->size + b] = 1;
       row[2 * machine->size + machine->num_buttons] = 0;
       row[2 * machine->size + machine->num_buttons + 1] = 1;
-    }
-    {
-      int* row = table.cells[machine->num_buttons];
-      for (int i = 0; i < machine->size; i++) {
-        const int t = machine->joltages[i];
-        row[i] = -t;
-        row[i + machine->size] = t;
-      }
-      for (int i = 0; i < machine->num_buttons; i++) {
-        row[2 * machine->size + i] = 0;
-      }
-      row[2 * machine->size + machine->num_buttons] = 1;
-      row[2 * machine->size + machine->num_buttons + 1] = 0;
     }
     print("initial:\n");
     print_table(&table);
@@ -254,7 +254,7 @@ int part2() {
     print_table(&table);
     // Check our answer.
     int counters[max_size] = {};
-    const int* answer = table.cells[table.num_rows - 1] + 2 * machine->size;
+    const int* answer = table.cells[0] + 2 * machine->size;
     print("\n");
     for (int i = 0; i < machine->num_buttons; i++) {
       print("button[%d]", i);
@@ -279,8 +279,8 @@ int part2() {
       print("\t%d", machine->joltages[i] - counters[i]);
     }
     print("\n");
-    const int num = table.cells[table.num_rows - 1][table.num_columns - 1];
-    const int den = table.cells[table.num_rows - 1][table.num_columns - 2];
+    const int num = table.cells[0][table.num_columns - 1];
+    const int den = table.cells[0][table.num_columns - 2];
     total += num / den;
   }
   return total;
