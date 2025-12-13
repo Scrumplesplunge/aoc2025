@@ -92,6 +92,7 @@ int part1() {
   return total;
 }
 
+enum { max_rows = 128, max_columns = 128 };
 struct table {
   // Number of rows in the Tableau.
   int num_rows;
@@ -102,7 +103,7 @@ struct table {
   // | 0 1 0 0  b1    -b1  | 1 |
   // | 0 0 1 0  ..     ..  | 1 |
   // | 0 0 0 1  bN    -bN  | 1 |
-  int cells[max_buttons + 1][2 * max_size + max_buttons + 2];
+  int cells[max_rows][max_columns];
 };
 
 void swap(int* a, int* b) {
@@ -185,6 +186,37 @@ int pivot_row(const struct table* table, int column) {
   return best;
 }
 
+void simplex_maximize(struct table* table) {
+  while (true) {
+    const int c = pivot_column(table);
+    if (c == -1) break;
+    const int r = pivot_row(table, c);
+    if (r == -1) die("unsolvable");
+    const int* pivot_row = table->cells[r];
+    const int pivot_factor = pivot_row[c];
+    // print("pivot on column %d, row %d:\n", c, r);
+    for (int i = 0; i < table->num_rows; i++) {
+      if (i == r) continue;
+      int* row = table->cells[i];
+      const int row_factor = row[c];
+      if (row_factor == 0) continue;
+      // print("row %d has factor %d\n", i, row_factor);
+      for (int j = 0; j < table->num_columns; j++) {
+        const int result = pivot_factor * row[j] - row_factor * pivot_row[j];
+        // if (j == c || j == table.num_columns - 1)
+        //   print("row[%d] = %d * %d - %d * %d = %d\n",
+        //       j, pivot_factor, row[j], row_factor, pivot_row[j], result);
+        row[j] = result;
+      }
+      assert(row[table->num_columns - 1] >= 0);
+      assert(row[c] == 0);
+      reduce_row(table, i);
+    }
+  }
+}
+
+int mod(int a, int b) { return ((a % b) + b) % b; }
+
 int part2() {
   int total = 0;
   for (int i = 0, n = num_machines; i < n; i++) {
@@ -221,30 +253,38 @@ int part2() {
     print_table(&table);
     // Reduce the table.
     while (true) {
-      const int c = pivot_column(&table);
-      if (c == -1) break;
-      const int r = pivot_row(&table, c);
-      if (r == -1) die("unsolvable");
-      const int* pivot_row = table.cells[r];
-      const int pivot_factor = pivot_row[c];
-      // print("pivot on column %d, row %d:\n", c, r);
-      for (int i = 0; i < table.num_rows; i++) {
-        if (i == r) continue;
-        int* row = table.cells[i];
-        const int row_factor = row[c];
-        if (row_factor == 0) continue;
-        // print("row %d has factor %d\n", i, row_factor);
-        for (int j = 0; j < table.num_columns; j++) {
-          const int result = pivot_factor * row[j] - row_factor * pivot_row[j];
-          // if (j == c || j == table.num_columns - 1)
-          //   print("row[%d] = %d * %d - %d * %d = %d\n",
-          //       j, pivot_factor, row[j], row_factor, pivot_row[j], result);
-          row[j] = result;
+      simplex_maximize(&table);
+      print("optimized:\n");
+      print_table(&table);
+      // Find a non-integer primal variable.
+      int non_int = -1;
+      for (int i = 1; i <= machine->num_buttons; i++) {
+        if (table.cells[0][i] % table.cells[0][0] != 0) {
+          non_int = i;
+          break;
         }
-        assert(row[table.num_columns - 1] >= 0);
-        assert(row[c] == 0);
-        reduce_row(&table, i);
       }
+      if (non_int == -1) break;
+      // Solution is not integer. Perform a Gomory cut.
+      if (table.num_rows == max_rows || table.num_columns == max_columns) {
+        die("too big");
+      }
+      table.num_columns++;
+      const int c = table.num_columns - 2;
+      for (int r = 0; r < table.num_rows; r++) {
+        table.cells[r][c + 1] = table.cells[r][c];
+      }
+      table.cells[0][c] = -(table.cells[0][non_int] % table.cells[0][0]);
+      for (int r = 1; r < table.num_rows; r++) {
+        table.cells[r][c] = -mod(table.cells[r][non_int], table.cells[0][0]);
+      }
+      for (int i = 0; i < table.num_columns; i++) {
+        table.cells[table.num_rows][i] = 0;
+      }
+      table.cells[table.num_rows][table.num_columns - 2] = 1;
+      table.num_rows++;
+      print("tweaked:\n");
+      print_table(&table);
     }
     print("optimal:\n");
     print_table(&table);
