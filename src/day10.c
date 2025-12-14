@@ -92,7 +92,7 @@ int part1() {
   return total;
 }
 
-enum { max_rows = 1024, max_columns = 1024 };
+enum { max_rows = 32, max_columns = 32 };
 struct table {
   // Number of rows in the Tableau.
   int num_rows;
