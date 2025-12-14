@@ -77,7 +77,8 @@ long long int part1() {
   for (long long int i = 0, n = num_machines; i < n; i++) {
     const struct machine* m = &machines[i];
     long long int best_count = max_buttons + 1;
-    for (long long int set = 0, all = (1 << m->num_buttons) - 1; set < all; set++) {
+    for (long long int set = 0, all = (1 << m->num_buttons) - 1; set < all;
+         set++) {
       uint16 result = 0;
       for (long long int i = 0; i < max_buttons; i++) {
         if (set & (1 << i)) result ^= m->buttons[i];
@@ -220,8 +221,7 @@ long long int dual_pivot_row(const struct table* table) {
   return best;
 }
 
-long long int dual_pivot_column(const struct table* table,
-                                long long int row) {
+long long int dual_pivot_column(const struct table* table, long long int row) {
   long long int best = -1;
   long long int best_n = 0, best_d = -1;
   for (long long int i = 0, c = table->num_columns - 2; i < c; i++) {
@@ -298,7 +298,8 @@ void canonicalize_table(struct table* table) {
   const long long int c = table->num_columns - 1;
   for (long long int i = 0; i < r - 1; i++) {
     if (table->cells[i][c] >= 0) continue;
-    for (long long int j = 0; j <= c; j++) table->cells[i][j] = -table->cells[i][j];
+    for (long long int j = 0; j <= c; j++)
+      table->cells[i][j] = -table->cells[i][j];
   }
   const long long int n = r - 1;
   table->num_rows++;
@@ -331,7 +332,8 @@ void canonicalize_table(struct table* table) {
         table->cells[i][table->num_columns - 1];
   }
   simplex_minimize(table);
-  const long long int cost = table->cells[table->num_rows - 1][table->num_columns - 1];
+  const long long int cost =
+      table->cells[table->num_rows - 1][table->num_columns - 1];
   if (cost != 0) die("no feasible solution");
   // Move the basis into the initial set of columns.
   for (int i = 0; i < n; i++) {
@@ -440,7 +442,3 @@ int main() {
   read_input();
   print_uints(part1(), part2());
 }
-
-// 33035 too high
-// 21772 wrong
-// 21782 wrong
