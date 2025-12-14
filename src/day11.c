@@ -7,11 +7,13 @@ enum { max_outs = 2048 };
 int num_outs;
 node_id outs[max_outs];
 
+enum { has_dac = 1, has_fft = 2 };
 struct device {
   unsigned short num_ins;
   unsigned short num_outs;
   node_id* outs;
-  int routes;
+  unsigned short part1;
+  unsigned long long part2[4];
 };
 
 enum { max_devices = 26 * 26 * 26 };
@@ -57,27 +59,34 @@ void read_input() {
   }
 }
 
-int part1() {
+int main() {
+  read_input();
   int head = 0, tail = 0;
   node_id queue[max_devices];
-  const node_id you = id("you");
-  devices[you].routes = 1;
+  devices[id("you")].part1 = 1;
+  devices[id("svr")].part2[0] = 1;
   for (int i = 0; i < max_devices; i++) {
     if (devices[i].num_outs > 0 && devices[i].num_ins == 0) queue[tail++] = i;
   }
   while (head != tail) {
-    struct device* d = &devices[queue[head++]];
+    const int i = queue[head++];
+    struct device* d = &devices[i];
+    if (i == id("dac")) {
+      d->part2[has_dac] += d->part2[0];
+      d->part2[has_dac | has_fft] += d->part2[has_fft];
+    } else if (i == id("fft")) {
+      d->part2[has_fft] += d->part2[0];
+      d->part2[has_fft | has_dac] += d->part2[has_dac];
+    }
     for (int i = 0; i < d->num_outs; i++) {
       struct device* o = &devices[d->outs[i]];
-      o->routes += d->routes;
+      assert(o->num_ins > 0);
+      o->part1 += d->part1;
+      for (int i = 0; i < 4; i++) o->part2[i] += d->part2[i];
       o->num_ins--;
       if (o->num_ins == 0) queue[tail++] = d->outs[i];
     }
   }
-  return devices[id("out")].routes;
-}
-
-int main() {
-  read_input();
-  print_uints(part1(), 0);
+  const struct device* out = &devices[id("out")];
+  print_ulongs(out->part1, out->part2[has_dac | has_fft]);
 }
