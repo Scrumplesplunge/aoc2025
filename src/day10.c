@@ -306,6 +306,7 @@ int basic_row(const struct table* table, int column) {
   int i = 0;
   const int n = table->num_rows - 1;
   while (i < n && table->cells[i][column] == 0) i++;
+  if (i == n) return -1;
   const int result = i++;
   while (i < n && table->cells[i][column] == 0) i++;
   return i == n ? result : -1;
@@ -338,7 +339,7 @@ void canonicalize_table(struct table* table) {
       table->cells[i][j] = 0;
     }
   }
-  // Move the costs to the new end.
+  // Move the values to the new end.
   for (long long int i = 0; i < r; i++) {
     table->cells[i][c + n + 1] = table->cells[i][c];
     table->cells[i][c] = 0;
@@ -361,19 +362,23 @@ void canonicalize_table(struct table* table) {
   simplex_minimize(table);
   const long long int cost = table->cells[table->num_rows - 1][table->num_columns - 1];
   if (cost != 0) die("no feasible solution");
+  print("before moving vars:\n");
+  print_table(table);
   // Move the basis into the initial set of columns.
   for (int i = 0; i < n; i++) {
     const int b = basic_row(table, c + i);
     if (b == -1) continue;
     // Find a non-basic column to pivot on.
     for (int j = 0; j < c - 1; j++) {
-      if (is_basic(table, j)) continue;
-      print("moving basic variable %d\n", b);
+      if (table->cells[b][j] == 0) continue;
+      print("moving basic variable %d to column %d\n", b, j);
       pivot(table, b, j);
       break;
     }
   }
-  // Move the cost row back.
+  print("before shrinking:\n");
+  print_table(table);
+  // Move the rhs back.
   for (long long int i = 0; i < r; i++) {
     table->cells[i][c] = table->cells[i][c + n + 1];
   }
