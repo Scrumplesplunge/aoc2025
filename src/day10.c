@@ -191,7 +191,12 @@ void simplex_minimize(struct table* table) {
     print("pivot on column %lld, ", c);
     const long long int r = pivot_row(table, c);
     if (r == -1) die("unsolvable");
-    const long long int* pivot_row = table->cells[r];
+    long long int* pivot_row = table->cells[r];
+    if (pivot_row[c] < 0) {
+      for (long long int i = 0; i < table->num_columns; i++) {
+        pivot_row[c] = -pivot_row[c];
+      }
+    }
     const long long int pivot_factor = pivot_row[c];
     print("row %lld:\n", r);
     for (long long int i = 0; i < table->num_rows; i++) {
@@ -208,6 +213,78 @@ void simplex_minimize(struct table* table) {
         row[j] = result;
       }
       assert(row[table->num_columns - 1] >= 0);
+      assert(row[c] == 0);
+      reduce_row(table, i);
+    }
+    print_table(table);
+  }
+}
+
+long long int dual_pivot_row(const struct table* table) {
+  const long long int c = table->num_columns - 1;
+  const long long int n = table->num_rows - 1;
+  long long int best = -1;
+  long long int best_value = 0;
+  for (long long int i = 0; i < n; i++) {
+    if (table->cells[i][c] < best_value) {
+      best = i;
+      best_value = table->cells[i][c];
+    }
+  }
+  return best;
+}
+
+long long int dual_pivot_column(const struct table* table,
+                                long long int row) {
+  long long int best = -1;
+  long long int best_n = 0, best_d = -1;
+  for (long long int i = 0, c = table->num_columns - 2; i < c; i++) {
+    const long long int d = table->cells[row][i];
+    if (d >= 0) continue;
+    const long long int n = table->cells[i][table->num_rows - 1];
+    if (best == -1 || best_d * n > best_n * d) {
+      best = i;
+      best_n = n;
+      best_d = d;
+    }
+  }
+  return best;
+}
+
+void dual_simplex(struct table* table) {
+  print("dual simplex initial:\n");
+  print_table(table);
+  while (true) {
+    const long long int r = dual_pivot_row(table);
+    if (r == -1) break;
+    print("pivot on row %lld, ", r);
+    const long long int c = dual_pivot_column(table, r);
+    if (c == -1) die("unsolvable");
+    print("column %lld:\n", c);
+    long long int* pivot_row = table->cells[r];
+    if (pivot_row[c] < 0) {
+      print("negating\n");
+      for (long long int i = 0; i < table->num_columns; i++) {
+        pivot_row[i] = -pivot_row[i];
+      }
+    } else {
+      print("not negating\n");
+    }
+    const long long int pivot_factor = pivot_row[c];
+    print("pivot row has factor %lld\n", pivot_factor);
+    for (long long int i = 0; i < table->num_rows; i++) {
+      if (i == r) continue;
+      long long int* row = table->cells[i];
+      const long long int row_factor = row[c];
+      print("row %lld has factor %lld\n", i, row_factor);
+      if (row_factor == 0) continue;
+      for (long long int j = 0; j < table->num_columns; j++) {
+        const long long int result = pivot_factor * row[j] - row_factor * pivot_row[j];
+        if (j == c || j == table->num_columns - 1)
+          print("row[%lld] = %lld * %lld - %lld * %lld = %lld\n",
+              j, pivot_factor, row[j], row_factor, pivot_row[j], result);
+        row[j] = result;
+      }
       assert(row[c] == 0);
       reduce_row(table, i);
     }
@@ -343,10 +420,10 @@ void gomory_cut(struct table* table, long long int row) {
   table->num_rows++;
   for (long long int i = 0; i < table->num_columns; i++) {
     table->cells[r + 1][i] = table->cells[r][i];
-    table->cells[r][i] = mod(table->cells[row][i], d);
+    table->cells[r][i] = -mod(table->cells[row][i], d);
   }
   table->cells[r][table->num_columns - 1] =
-      mod(table->cells[row][table->num_columns - 1], d);
+      -mod(table->cells[row][table->num_columns - 1], d);
   // Move the RHS and the cost variable over by one space.
   const long long int c = table->num_columns - 2;
   table->num_columns++;
@@ -356,7 +433,7 @@ void gomory_cut(struct table* table, long long int row) {
     out[1] = out[0];
     out[0] = 0;
   }
-  table->cells[r][c] = -d;
+  table->cells[r][c] = d;
 }
 
 void integer_minimize(struct table* table) {
@@ -369,8 +446,8 @@ void integer_minimize(struct table* table) {
     print("row %lld is non-integer\n", r);
     gomory_cut(table, r);
     print_table(table);
-    canonicalize_table(table);
-    print("canonicalized:\n");
+    dual_simplex(table);
+    print("repaired:\n");
     print_table(table);
   }
 }
@@ -405,3 +482,4 @@ int main() {
 
 // 33035 too high
 // 21772 wrong
+// 21782 wrong
