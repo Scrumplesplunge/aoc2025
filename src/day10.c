@@ -143,15 +143,6 @@ void reduce_row(struct table* t, long long int row) {
   for (long long int i = 0; i < n; i++) t->cells[row][i] /= divisor;
 }
 
-void print_table(const struct table* table) {
-  for (long long int r = 0; r < table->num_rows; r++) {
-    for (long long int c = 0; c < table->num_columns; c++) {
-      print("\t%lld", table->cells[r][c]);
-    }
-    print("\n");
-  }
-}
-
 long long int pivot_column(const struct table* table) {
   const long long int* cost_row = table->cells[table->num_rows - 1];
   const long long int n = table->num_columns - 2;
@@ -185,12 +176,9 @@ long long int pivot_row(const struct table* table, long long int column) {
 void pivot(struct table* table, int row, int column) {
   long long int* pivot_row = table->cells[row];
   if (pivot_row[column] < 0) {
-    print("negating row with %lld\n", pivot_row[column]);
     for (long long int i = 0; i < table->num_columns; i++) {
       pivot_row[i] = -pivot_row[i];
     }
-  } else {
-    print("chose not to negate %lld\n", pivot_row[column]);
   }
   const long long int pivot_factor = pivot_row[column];
   for (long long int i = 0; i < table->num_rows; i++) {
@@ -198,13 +186,9 @@ void pivot(struct table* table, int row, int column) {
     long long int* row = table->cells[i];
     const long long int row_factor = row[column];
     if (row_factor == 0) continue;
-    //print("row %lld has factor %lld\n", i, row_factor);
     for (long long int j = 0; j < table->num_columns; j++) {
       const long long int result =
           pivot_factor * row[j] - row_factor * pivot_row[j];
-      // if (j == c || j == table->num_columns - 1)
-      //   print("row[%lld] = %lld * %lld - %lld * %lld = %lld\n",
-      //       j, pivot_factor, row[j], row_factor, pivot_row[j], result);
       row[j] = result;
     }
     assert(row[column] == 0);
@@ -213,17 +197,12 @@ void pivot(struct table* table, int row, int column) {
 }
 
 void simplex_minimize(struct table* table) {
-  print("simplex initial:\n");
-  print_table(table);
   while (true) {
     const long long int c = pivot_column(table);
     if (c == -1) break;
-    print("pivot on column %lld, ", c);
     const long long int r = pivot_row(table, c);
     if (r == -1) die("unsolvable");
-    print("row %lld:\n", r);
     pivot(table, r, c);
-    print_table(table);
   }
 }
 
@@ -251,7 +230,6 @@ long long int dual_pivot_column(const struct table* table,
     const long long int n = table->cells[table->num_rows - 1][i];
     assert(n <= 0);
     if (best == -1 || best_d * n < best_n * d) {
-      print("improved ratio: %lld/%lld -> %lld/%lld\n", best_n, best_d, n, d);
       best = i;
       best_n = n;
       best_d = d;
@@ -261,17 +239,12 @@ long long int dual_pivot_column(const struct table* table,
 }
 
 void dual_simplex(struct table* table) {
-  print("dual simplex initial:\n");
-  print_table(table);
   while (true) {
     const long long int r = dual_pivot_row(table);
     if (r == -1) break;
-    print("pivot on row %lld, ", r);
     const long long int c = dual_pivot_column(table, r);
     if (c == -1) die("unsolvable");
-    print("column %lld:\n", c);
     pivot(table, r, c);
-    print_table(table);
   }
 }
 
@@ -357,13 +330,9 @@ void canonicalize_table(struct table* table) {
     table->cells[r][table->num_columns - 1] +=
         table->cells[i][table->num_columns - 1];
   }
-  // print("phase 1:\n");
-  // print_table(table);
   simplex_minimize(table);
   const long long int cost = table->cells[table->num_rows - 1][table->num_columns - 1];
   if (cost != 0) die("no feasible solution");
-  print("before moving vars:\n");
-  print_table(table);
   // Move the basis into the initial set of columns.
   for (int i = 0; i < n; i++) {
     const int b = basic_row(table, c + i);
@@ -371,13 +340,10 @@ void canonicalize_table(struct table* table) {
     // Find a non-basic column to pivot on.
     for (int j = 0; j < c - 1; j++) {
       if (table->cells[b][j] == 0) continue;
-      print("moving basic variable %d to column %d\n", b, j);
       pivot(table, b, j);
       break;
     }
   }
-  print("before shrinking:\n");
-  print_table(table);
   // Move the rhs back.
   for (long long int i = 0; i < r; i++) {
     table->cells[i][c] = table->cells[i][c + n + 1];
@@ -446,27 +412,17 @@ void gomory_cut(struct table* table, long long int row) {
 void integer_minimize(struct table* table) {
   while (true) {
     simplex_minimize(table);
-    print("simplex optimized:\n");
-    print_table(table);
     const long long int r = non_integer_row(table);
     if (r == -1) return;
-    print("row %lld is non-integer\n", r);
     gomory_cut(table, r);
-    print_table(table);
     dual_simplex(table);
-    print("repaired:\n");
-    print_table(table);
   }
 }
 
 struct table table;
 long long int joltage_min_presses(const struct machine* machine) {
   build_table(&table, machine);
-  print("initial:\n");
-  print_table(&table);
   canonicalize_table(&table);
-  print("canonicalized:\n");
-  print_table(&table);
   integer_minimize(&table);
   return table.cells[table.num_rows - 1][table.num_columns - 1] /
          table.cells[table.num_rows - 1][table.num_columns - 2];
@@ -475,9 +431,7 @@ long long int joltage_min_presses(const struct machine* machine) {
 long long int part2() {
   long long int total = 0;
   for (long long int i = 0, n = num_machines; i < n; i++) {
-    const long long int x = joltage_min_presses(&machines[i]);
-    print("machines[%lld]: %lld\n", i, x);
-    total += x;
+    total += joltage_min_presses(&machines[i]);
   }
   return total;
 }
