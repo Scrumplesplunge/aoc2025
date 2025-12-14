@@ -98,9 +98,8 @@ struct table {
   int num_rows;
   // Number of columns **including the RHS**
   int num_columns;
-  // Simplex Tableau:
-  // | b1 .. bN I 0 | t |
-  // | -1 .. -1 0 1 | k |
+  // Simplex Tableau, with the right-most column representing the right hand
+  // side of each equality and the bottom row representing the cost function.
   int cells[max_rows][max_columns];
 };
 
@@ -127,6 +126,7 @@ int gcd(int a, int b) {
   return a;
 }
 
+// Scale an entire row by dividing it by its greatest common divisor.
 void reduce_row(struct table* t, int row) {
   int divisor = 0;
   const int n = t->num_columns;
@@ -143,6 +143,9 @@ void reduce_row(struct table* t, int row) {
   for (int i = 0; i < n; i++) t->cells[row][i] /= divisor;
 }
 
+// Pick a pivot column for primal simplex.
+// We want the column with most positive coefficient in the cost row to have the
+// largest impact on the cost function.
 int pivot_column(const struct table* table) {
   const int* cost_row = table->cells[table->num_rows - 1];
   const int n = table->num_columns - 2;
@@ -157,6 +160,9 @@ int pivot_column(const struct table* table) {
   return best;
 }
 
+// Pick a pivot row for primal simplex.
+// The candidate row must have the minimal ratio between the pivot cell and the
+// RHS for that row. This ensures that the RHS stays positive.
 int pivot_row(const struct table* table, int column) {
   int best = -1;
   int best_n = 0, best_d = 1;
@@ -173,6 +179,8 @@ int pivot_row(const struct table* table, int column) {
   return best;
 }
 
+// Perform a simplex pivot operation around the given cell. Once complete,
+// this column will be a basic variable.
 void pivot(struct table* table, int row, int column) {
   int* pivot_row = table->cells[row];
   if (pivot_row[column] < 0) {
@@ -195,6 +203,7 @@ void pivot(struct table* table, int row, int column) {
   }
 }
 
+// Run primal simplex to minimize the cost function.
 void simplex_minimize(struct table* table) {
   while (true) {
     const int c = pivot_column(table);
@@ -205,6 +214,8 @@ void simplex_minimize(struct table* table) {
   }
 }
 
+// Pick a pivot row for dual simplex.
+// We want the row with the most negative value on the RHS.
 int dual_pivot_row(const struct table* table) {
   const int c = table->num_columns - 1;
   const int n = table->num_rows - 1;
@@ -219,6 +230,10 @@ int dual_pivot_row(const struct table* table) {
   return best;
 }
 
+// Pick a pivot column for dual simplex.
+// The candidate column must have the minimal ratio between the pivot cell and
+// the corresponding coefficient in the cost row to guarantee that the tableau
+// remains dual-feasible after the pivot.
 int dual_pivot_column(const struct table* table, int row) {
   int best = -1;
   int best_n = 0, best_d = -1;
@@ -236,6 +251,7 @@ int dual_pivot_column(const struct table* table, int row) {
   return best;
 }
 
+// Run dual simplex to find a feasible solution after adding a Gomory cut.
 void dual_simplex(struct table* table) {
   while (true) {
     const int r = dual_pivot_row(table);
@@ -246,6 +262,7 @@ void dual_simplex(struct table* table) {
   }
 }
 
+// Convert a machine into a non-canonical simplex tableau.
 void build_table(struct table* table, const struct machine* machine) {
   for (int i = 0; i < max_rows; i++) {
     for (int j = 0; j < max_columns; j++) {
@@ -283,10 +300,12 @@ int basic_row(const struct table* table, int column) {
   return i == n ? result : -1;
 }
 
+// Returns true if the given column is a basic variable.
 bool is_basic(const struct table* table, int column) {
   return basic_row(table, column) != -1;
 }
 
+// Convert a non-canonical tableau into a canonical one.
 void canonicalize_table(struct table* table) {
   if (table->num_rows == max_rows ||
       table->num_columns + table->num_rows >= max_columns) {
@@ -353,6 +372,8 @@ void canonicalize_table(struct table* table) {
   }
 }
 
+// Returns the index of the first row with a non-integer assignment for the
+// corresponding basic variable.
 int non_integer_row(const struct table* table) {
   for (int i = 0; i < table->num_columns - 2; i++) {
     if (!is_basic(table, i)) continue;
@@ -380,6 +401,9 @@ int mod(int n, int d) {
   return ((n % d) + d) % d;
 }
 
+// Compute the Gomory cut for a given row with a non-integer assignment for the
+// corresponding basic variable and add the cut to the tableau. The resulting
+// tableau no longer represents a feasible solution.
 void gomory_cut(struct table* table, int row) {
   if (table->num_rows == max_rows || table->num_columns == max_columns) {
     die("too big");
@@ -409,10 +433,14 @@ void gomory_cut(struct table* table, int row) {
 
 void integer_minimize(struct table* table) {
   while (true) {
+    // Optimize the primal problem.
     simplex_minimize(table);
+    // Check if the solution is entirely integer.
     const int r = non_integer_row(table);
     if (r == -1) return;
+    // If not, perform a Gomory cut to push it towards an integer solution.
     gomory_cut(table, r);
+    // Perform dual simplex to restore primal feasibility.
     dual_simplex(table);
   }
 }
