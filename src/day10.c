@@ -13,13 +13,13 @@ struct machine {
 };
 
 enum { max_machines = 200 };
-int num_machines;
+long long int num_machines;
 struct machine machines[max_machines];
 
 void read_input() {
   enum { buffer_size = 21 << 10 };
   char buffer[buffer_size];
-  const int n = read(STDIN_FILENO, buffer, buffer_size);
+  const long long int n = read(STDIN_FILENO, buffer, buffer_size);
   if (n == 0 || buffer[n - 1] != '\n') die("bad input len");
 
   const char* i = buffer;
@@ -30,7 +30,7 @@ void read_input() {
     struct machine* const m = &machines[num_machines++];
     if (*i++ != '[') die("bad input");
     // Read the target light sequence.
-    unsigned int next_bit = 1;
+    unsigned long long int next_bit = 1;
     while (*i == '.' || *i == '#') {
       if (next_bit == (1 << max_size)) die("bad input mask size");
       if (*i == '#') m->target |= next_bit;
@@ -66,24 +66,24 @@ void read_input() {
   }
 }
 
-int popcount(unsigned int x) {
-  int total;
+long long int popcount(unsigned long long int x) {
+  long long int total;
   asm("popcnt %1, %0" : "=r"(total) : "r"(x));
   return total;
 }
 
-int part1() {
-  int total = 0;
-  for (int i = 0, n = num_machines; i < n; i++) {
+long long int part1() {
+  long long int total = 0;
+  for (long long int i = 0, n = num_machines; i < n; i++) {
     const struct machine* m = &machines[i];
-    int best_count = max_buttons + 1;
-    for (int set = 0, all = (1 << m->num_buttons) - 1; set < all; set++) {
+    long long int best_count = max_buttons + 1;
+    for (long long int set = 0, all = (1 << m->num_buttons) - 1; set < all; set++) {
       uint16 result = 0;
-      for (int i = 0; i < max_buttons; i++) {
+      for (long long int i = 0; i < max_buttons; i++) {
         if (set & (1 << i)) result ^= m->buttons[i];
       }
       if (result != m->target) continue;
-      const int count = popcount(set);
+      const long long int count = popcount(set);
       if (count >= best_count) continue;
       best_count = count;
     }
@@ -92,48 +92,46 @@ int part1() {
   return total;
 }
 
-enum { max_rows = 128, max_columns = 128 };
+enum { max_rows = 1024, max_columns = 1024 };
 struct table {
   // Number of rows in the Tableau.
-  int num_rows;
+  long long int num_rows;
   // Number of columns **including the RHS**
-  int num_columns;
+  long long int num_columns;
   // Simplex Tableau:
-  // | 1 0 0 0  -t^T  t^T  | 0 |
-  // | 0 1 0 0  b1    -b1  | 1 |
-  // | 0 0 1 0  ..     ..  | 1 |
-  // | 0 0 0 1  bN    -bN  | 1 |
-  int cells[max_rows][max_columns];
+  // | b1 .. bN I 0 | t |
+  // | -1 .. -1 0 1 | k |
+  long long int cells[max_rows][max_columns];
 };
 
-void swap(int* a, int* b) {
-  int temp = *a;
+void swap(long long int* a, long long int* b) {
+  long long int temp = *a;
   *a = *b;
   *b = temp;
 }
 
-void swap_rows(struct table* t, int a, int b) {
-  for (int i = 0, c = t->num_columns; i < c; i++) {
+void swap_rows(struct table* t, long long int a, long long int b) {
+  for (long long int i = 0, c = t->num_columns; i < c; i++) {
     swap(&t->cells[a][i], &t->cells[b][i]);
   }
 }
 
-int abs(int x) { return x < 0 ? -x : x; }
+long long int abs(long long int x) { return x < 0 ? -x : x; }
 
-int gcd(int a, int b) {
+long long int gcd(long long int a, long long int b) {
   while (b != 0) {
-    const int temp = b;
+    const long long int temp = b;
     b = a % b;
     a = temp;
   }
   return a;
 }
 
-void reduce_row(struct table* t, int row) {
-  int divisor = 0;
-  const int n = t->num_columns;
-  for (int i = 0; i < n; i++) {
-    const int v = abs(t->cells[row][i]);
+void reduce_row(struct table* t, long long int row) {
+  long long int divisor = 0;
+  const long long int n = t->num_columns;
+  for (long long int i = 0; i < n; i++) {
+    const long long int v = abs(t->cells[row][i]);
     if (v == 0) continue;
     if (divisor == 0) {
       divisor = v;
@@ -142,27 +140,25 @@ void reduce_row(struct table* t, int row) {
     }
   }
   if (divisor == 0) return;
-  for (int i = 0; i < n; i++) t->cells[row][i] /= divisor;
+  for (long long int i = 0; i < n; i++) t->cells[row][i] /= divisor;
 }
 
-int lcm(int a, int b) { return a * b / gcd(a, b); }
-
 void print_table(const struct table* table) {
-  for (int r = 0; r < table->num_rows; r++) {
-    for (int c = 0; c < table->num_columns; c++) {
-      print("\t%d", table->cells[r][c]);
+  for (long long int r = 0; r < table->num_rows; r++) {
+    for (long long int c = 0; c < table->num_columns; c++) {
+      print("\t%lld", table->cells[r][c]);
     }
     print("\n");
   }
 }
 
-int pivot_column(const struct table* table) {
-  const int* cost_row = table->cells[0];
-  const int n = table->num_columns;
-  int best = -1;
-  int best_value = 0;
-  for (int i = 1; i < n; i++) {
-    if (cost_row[i] < best_value) {
+long long int pivot_column(const struct table* table) {
+  const long long int* cost_row = table->cells[table->num_rows - 1];
+  const long long int n = table->num_columns - 2;
+  long long int best = -1;
+  long long int best_value = 0;
+  for (long long int i = 0; i < n; i++) {
+    if (cost_row[i] > best_value) {
       best = i;
       best_value = cost_row[i];
     }
@@ -170,13 +166,13 @@ int pivot_column(const struct table* table) {
   return best;
 }
 
-int pivot_row(const struct table* table, int column) {
-  int best = -1;
-  int best_n = 0, best_d = 1;
-  for (int i = 1, r = table->num_rows; i < r; i++) {
-    const int d = table->cells[i][column];
+long long int pivot_row(const struct table* table, long long int column) {
+  long long int best = -1;
+  long long int best_n = 0, best_d = 1;
+  for (long long int i = 0, r = table->num_rows - 1; i < r; i++) {
+    const long long int d = table->cells[i][column];
     if (d <= 0) continue;
-    const int n = table->cells[i][table->num_columns - 1];
+    const long long int n = table->cells[i][table->num_columns - 1];
     if (best == -1 || best_d * n < best_n * d) {
       best = i;
       best_n = n;
@@ -186,25 +182,28 @@ int pivot_row(const struct table* table, int column) {
   return best;
 }
 
-void simplex_maximize(struct table* table) {
+void simplex_minimize(struct table* table) {
+  print("simplex initial:\n");
+  print_table(table);
   while (true) {
-    const int c = pivot_column(table);
+    const long long int c = pivot_column(table);
     if (c == -1) break;
-    const int r = pivot_row(table, c);
+    print("pivot on column %lld, ", c);
+    const long long int r = pivot_row(table, c);
     if (r == -1) die("unsolvable");
-    const int* pivot_row = table->cells[r];
-    const int pivot_factor = pivot_row[c];
-    // print("pivot on column %d, row %d:\n", c, r);
-    for (int i = 0; i < table->num_rows; i++) {
+    const long long int* pivot_row = table->cells[r];
+    const long long int pivot_factor = pivot_row[c];
+    print("row %lld:\n", r);
+    for (long long int i = 0; i < table->num_rows; i++) {
       if (i == r) continue;
-      int* row = table->cells[i];
-      const int row_factor = row[c];
+      long long int* row = table->cells[i];
+      const long long int row_factor = row[c];
       if (row_factor == 0) continue;
-      // print("row %d has factor %d\n", i, row_factor);
-      for (int j = 0; j < table->num_columns; j++) {
-        const int result = pivot_factor * row[j] - row_factor * pivot_row[j];
-        // if (j == c || j == table.num_columns - 1)
-        //   print("row[%d] = %d * %d - %d * %d = %d\n",
+      //print("row %lld has factor %lld\n", i, row_factor);
+      for (long long int j = 0; j < table->num_columns; j++) {
+        const long long int result = pivot_factor * row[j] - row_factor * pivot_row[j];
+        // if (j == c || j == table->num_columns - 1)
+        //   print("row[%lld] = %lld * %lld - %lld * %lld = %lld\n",
         //       j, pivot_factor, row[j], row_factor, pivot_row[j], result);
         row[j] = result;
       }
@@ -212,112 +211,189 @@ void simplex_maximize(struct table* table) {
       assert(row[c] == 0);
       reduce_row(table, i);
     }
+    print_table(table);
   }
 }
 
-int mod(int a, int b) { return ((a % b) + b) % b; }
+void build_table(struct table* table, const struct machine* machine) {
+  for (long long int i = 0; i < max_rows; i++) {
+    for (long long int j = 0; j < max_columns; j++) {
+      table->cells[i][j] = 999999;
+    }
+  }
+  const long long int s = machine->size;
+  const long long int b = machine->num_buttons;
+  // Build the tableau.
+  table->num_rows = s + 1;
+  table->num_columns = b + 2;
+  for (long long int i = 0; i < b; i++) {
+    for (long long int j = 0; j < s; j++) {
+      table->cells[j][i] = (machine->buttons[i] >> j) & 1;
+    }
+    table->cells[s][i] = -1;
+  }
+  for (long long int i = 0; i < s; i++) {
+    table->cells[i][b] = 0;
+    table->cells[i][b + 1] = machine->joltages[i];
+  }
+  table->cells[table->num_rows - 1][table->num_columns - 2] = 1;
+  table->cells[table->num_rows - 1][table->num_columns - 1] = 0;
+}
 
-int part2() {
-  int total = 0;
-  for (int i = 0, n = num_machines; i < n; i++) {
-    // Build the matrix.
-    const struct machine* machine = &machines[i];
-    struct table table = {
-        .num_rows = machine->num_buttons + 1,
-        .num_columns = 2 * machine->size + machine->num_buttons + 2};
-    // Build the Simplex Tableau
-    {
-      int* row = table.cells[0];
-      row[0] = 1;
-      for (int i = 1; i <= machine->num_buttons; i++) row[i] = 0;
-      for (int i = 0; i < machine->size; i++) {
-        const int t = machine->joltages[i];
-        row[machine->num_buttons + 1 + i] = -t;
-        row[machine->num_buttons + 1 + i + machine->size] = t;
-      }
-      row[table.num_columns - 1] = 0;
+void canonicalize_table(struct table* table) {
+  if (table->num_rows == max_rows ||
+      table->num_columns + table->num_rows >= max_columns) {
+    die("too big");
+  }
+  const long long int r = table->num_rows;
+  const long long int c = table->num_columns - 1;
+  for (long long int i = 0; i < r - 1; i++) {
+    if (table->cells[i][c] >= 0) continue;
+    for (long long int j = 0; j <= c; j++) table->cells[i][j] = -table->cells[i][j];
+  }
+  const long long int n = r - 1;
+  table->num_rows++;
+  table->num_columns += n + 1;
+  // Zero all the new space.
+  for (long long int i = 0; i < table->num_columns; i++) {
+    table->cells[r][i] = 0;
+  }
+  for (long long int i = 0; i < table->num_rows; i++) {
+    for (long long int j = c + 1; j < table->num_columns; j++) {
+      table->cells[i][j] = 0;
     }
-    for (int b = 0; b < machine->num_buttons; b++) {
-      int* row = table.cells[b + 1];
-      row[0] = 0;
-      for (int i = 1; i <= machine->num_buttons; i++) row[i] = 0;
-      row[1 + b] = 1;
-      for (int i = 0; i < machine->size; i++) {
-        const int x = (machine->buttons[b] >> i) & 1;
-        row[machine->num_buttons + 1 + i] = x;
-        row[machine->num_buttons + 1 + i + machine->size] = -x;
-      }
-      row[table.num_columns - 1] = 1;
+  }
+  // Move the costs to the new end.
+  for (long long int i = 0; i < r; i++) {
+    table->cells[i][c + n + 1] = table->cells[i][c];
+    table->cells[i][c] = 0;
+  }
+  // Prepare the new cost row.
+  for (long long int i = 0; i < c - 1; i++) {
+    long long int value = 0;
+    for (long long int j = 0; j < n; j++) value += table->cells[j][i];
+    table->cells[r][i] = value;
+  }
+  table->cells[r][table->num_columns - 2] = 1;
+  // Add artificial variables.
+  for (long long int i = 0; i < n; i++) table->cells[i][c + i] = 1;
+  for (long long int i = 0; i < n; i++) {
+    table->cells[r][table->num_columns - 1] +=
+        table->cells[i][table->num_columns - 1];
+  }
+  // print("phase 1:\n");
+  // print_table(table);
+  simplex_minimize(table);
+  const long long int cost = table->cells[table->num_rows - 1][table->num_columns - 1];
+  if (cost != 0) die("no feasible solution");
+  // Move the cost row back.
+  for (long long int i = 0; i < r; i++) {
+    table->cells[i][c] = table->cells[i][c + n + 1];
+  }
+  table->num_rows = r;
+  table->num_columns = c + 1;
+  for (long long int i = 0; i < r; i++) {
+    reduce_row(table, i);
+  }
+}
+
+bool is_basic(const struct table* table, long long int column) {
+  long long int count = 0;
+  for (long long int i = 0; i < table->num_rows; i++) {
+    count += (table->cells[i][column] != 0);
+  }
+  return count == 1;
+}
+
+long long int non_integer_row(const struct table* table) {
+  for (long long int i = 0; i < table->num_columns - 2; i++) {
+    if (!is_basic(table, i)) continue;
+    for (long long int j = 0; j < table->num_rows - 1; j++) {
+      if (table->cells[j][i] == 0) continue;
+      const long long int n = table->cells[j][table->num_columns - 1];
+      const long long int d = table->cells[j][i];
+      if (n % d != 0) return j;
+      break;
     }
-    print("initial:\n");
-    print_table(&table);
-    // Reduce the table.
-    while (true) {
-      simplex_maximize(&table);
-      print("optimized:\n");
-      print_table(&table);
-      // Find a non-integer primal variable.
-      int non_int = -1;
-      for (int i = 1; i <= machine->num_buttons; i++) {
-        if (table.cells[0][i] % table.cells[0][0] != 0) {
-          non_int = i;
-          break;
-        }
-      }
-      if (non_int == -1) break;
-      // Solution is not integer. Perform a Gomory cut.
-      if (table.num_rows == max_rows || table.num_columns == max_columns) {
-        die("too big");
-      }
-      table.num_columns++;
-      const int c = table.num_columns - 2;
-      for (int r = 0; r < table.num_rows; r++) {
-        table.cells[r][c + 1] = table.cells[r][c];
-      }
-      table.cells[0][c] = -(table.cells[0][non_int] % table.cells[0][0]);
-      for (int r = 1; r < table.num_rows; r++) {
-        table.cells[r][c] = -mod(table.cells[r][non_int], table.cells[0][0]);
-      }
-      for (int i = 0; i < table.num_columns; i++) {
-        table.cells[table.num_rows][i] = 0;
-      }
-      table.cells[table.num_rows][table.num_columns - 2] = 1;
-      table.num_rows++;
-      print("tweaked:\n");
-      print_table(&table);
-    }
-    print("optimal:\n");
-    print_table(&table);
-    // Check our answer.
-    int counters[max_size] = {};
-    const int* answer = table.cells[0] + 1;
-    print("\n");
-    for (int i = 0; i < machine->num_buttons; i++) {
-      print("button[%d]", i);
-      const uint16 b = machine->buttons[i];
-      const int k = answer[i] / table.cells[0][0];
-      for (int j = 0; j < machine->size; j++) {
-        print("\t%d", (b >> j) & 1);
-        if ((b >> j) & 1) counters[j] += k;
-      }
-      print("\n");
-    }
-    print("expected ");
-    for (int i = 0; i < machine->size; i++) {
-      print("\t%d", machine->joltages[i]);
-    }
-    print("\nactual   ");
-    for (int i = 0; i < machine->size; i++) {
-      print("\t%d", counters[i]);
-    }
-    print("\ndiff     ");
-    for (int i = 0; i < machine->size; i++) {
-      print("\t%d", machine->joltages[i] - counters[i]);
-    }
-    print("\n");
-    const int num = table.cells[0][table.num_columns - 1];
-    const int den = table.cells[0][0];
-    total += num / den;
+  }
+  return -1;
+}
+
+// Finds the column index of the basic variable corresponding to the given row.
+long long int basic_variable(const struct table* table, long long int row) {
+  for (long long int i = 0; i < table->num_columns - 2; i++) {
+    if (table->cells[row][i] != 0 && is_basic(table, i)) return i;
+  }
+  die("no basic variable");
+}
+
+long long int mod(long long int n, long long int d) {
+  assert(d > 0);
+  return ((n % d) + d) % d;
+}
+
+void gomory_cut(struct table* table, long long int row) {
+  if (table->num_rows == max_rows || table->num_columns == max_columns) {
+    die("too big");
+  }
+  const long long int column = basic_variable(table, row);
+  const long long int d = table->cells[row][column];
+  // Insert the new row.
+  const long long int r = table->num_rows - 1;
+  table->num_rows++;
+  for (long long int i = 0; i < table->num_columns; i++) {
+    table->cells[r + 1][i] = table->cells[r][i];
+    table->cells[r][i] = mod(table->cells[row][i], d);
+  }
+  table->cells[r][table->num_columns - 1] =
+      mod(table->cells[row][table->num_columns - 1], d);
+  // Move the RHS and the cost variable over by one space.
+  const long long int c = table->num_columns - 2;
+  table->num_columns++;
+  for (long long int i = 0; i < table->num_rows; i++) {
+    long long int* out = &table->cells[i][c];
+    out[2] = out[1];
+    out[1] = out[0];
+    out[0] = 0;
+  }
+  table->cells[r][c] = -d;
+}
+
+void integer_minimize(struct table* table) {
+  while (true) {
+    simplex_minimize(table);
+    print("simplex optimized:\n");
+    print_table(table);
+    const long long int r = non_integer_row(table);
+    if (r == -1) return;
+    print("row %lld is non-integer\n", r);
+    gomory_cut(table, r);
+    print_table(table);
+    canonicalize_table(table);
+    print("canonicalized:\n");
+    print_table(table);
+  }
+}
+
+struct table table;
+long long int joltage_min_presses(const struct machine* machine) {
+  build_table(&table, machine);
+  print("initial:\n");
+  print_table(&table);
+  canonicalize_table(&table);
+  print("canonicalized:\n");
+  print_table(&table);
+  integer_minimize(&table);
+  return table.cells[table.num_rows - 1][table.num_columns - 1] /
+         table.cells[table.num_rows - 1][table.num_columns - 2];
+}
+
+long long int part2() {
+  long long int total = 0;
+  for (long long int i = 0, n = num_machines; i < n; i++) {
+    const long long int x = joltage_min_presses(&machines[i]);
+    print("machines[%lld]: %lld\n", i, x);
+    total += x;
   }
   return total;
 }
