@@ -112,6 +112,14 @@ void fprint(int fd, const char* restrict pattern, ...) {
   va_end(args);
 }
 
+void print_uint(unsigned int a) {
+  char buffer[128];
+  char* o = buffer;
+  o = format_uint(o, a);
+  *o++ = '\n';
+  write(STDOUT_FILENO, buffer, o - buffer);
+}
+
 void print_uints(unsigned int a, unsigned int b) {
   char buffer[128];
   char* o = buffer;
