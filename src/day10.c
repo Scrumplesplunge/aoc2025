@@ -20,49 +20,49 @@ void read_input() {
   enum { buffer_size = 21 << 10 };
   char buffer[buffer_size];
   const int n = read(STDIN_FILENO, buffer, buffer_size);
-  if (n == 0 || buffer[n - 1] != '\n') die("bad input len");
+  if (n == 0 || buffer[n - 1] != '\n') die("bad input");
 
   const char* i = buffer;
   const char* end = i + n;
 
   while (i != end) {
-    if (num_machines == max_machines) die("bad input machine count");
+    if (num_machines == max_machines) die("bad input");
     struct machine* const m = &machines[num_machines++];
     if (*i++ != '[') die("bad input");
     // Read the target light sequence.
     unsigned int next_bit = 1;
     while (*i == '.' || *i == '#') {
-      if (next_bit == (1 << max_size)) die("bad input mask size");
+      if (next_bit == (1 << max_size)) die("bad input");
       if (*i == '#') m->target |= next_bit;
       next_bit <<= 1;
       i++;
     }
-    if (*i++ != ']' || *i++ != ' ' || *i++ != '(') die("bad input syntax");
+    if (*i++ != ']' || *i++ != ' ' || *i++ != '(') die("bad input");
     // Read the set of buttons.
     while (true) {
-      if (m->num_buttons == max_buttons) die("bad input button count");
+      if (m->num_buttons == max_buttons) die("bad input");
       uint16* const button = &m->buttons[m->num_buttons++];
       while (true) {
-        if (!is_digit(*i)) die("bad input syntax2");
+        if (!is_digit(*i)) die("bad input");
         *button |= 1 << (*i++ - '0');
         if (*i != ',') break;
         i++;
       }
-      if (*i++ != ')' || *i++ != ' ') die("bad input syntax3");
+      if (*i++ != ')' || *i++ != ' ') die("bad input");
       if (*i != '(') break;
       i++;
     }
-    if (*i++ != '{') die("bad input syntax4");
+    if (*i++ != '{') die("bad input");
     // Skip the joltages for now.
     do {
-      if (m->size == max_size) die("bad input joltage count");
+      if (m->size == max_size) die("bad input");
       unsigned int value;
       i = scan_uint(i, &value);
-      if (!i) die("bad input syntax6");
+      if (!i) die("bad input");
       m->joltages[m->size++] = value;
-      if (*i != '}' && *i != ',') die("bad input syntax7");
+      if (*i != '}' && *i != ',') die("bad input");
     } while (*i++ == ',');
-    if (*i++ != '\n') die("bad input syntax5");
+    if (*i++ != '\n') die("bad input");
   }
 }
 
@@ -349,7 +349,7 @@ void canonicalize_table(struct table* table) {
   }
   simplex_minimize(table);
   const int cost = table->cells[table->num_rows - 1][table->num_columns - 1];
-  if (cost != 0) die("no feasible solution");
+  if (cost != 0) die("unsolvable");
   // Move the basis into the initial set of columns.
   for (int i = 0; i < n; i++) {
     const int b = basic_row(table, c + i);
