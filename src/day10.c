@@ -53,7 +53,7 @@ void read_input() {
       i++;
     }
     if (*i++ != '{') die("bad input");
-    // Skip the joltages for now.
+    // Read the joltages.
     do {
       if (m->size == max_size) die("bad input");
       unsigned int value;
