@@ -34,7 +34,7 @@ void read_input() {
   enum { buffer_size = 11 << 10 };
   char buffer[buffer_size];
   const int n = read(STDIN_FILENO, buffer, buffer_size);
-  if (n == 0 || buffer[n - 1] != '\n') die("bad input len");
+  if (n == 0 || buffer[n - 1] != '\n') die("bad input");
 
   const char* i = buffer;
   const char* end = i + n;
@@ -42,12 +42,12 @@ void read_input() {
   while (i != end) {
     const node_id d = id(i);
     i += 3;
-    if (*i++ != ':') die("bad input colon");
+    if (*i++ != ':') die("bad input");
     const int first_out = num_outs;
     while (*i != '\n') {
-      if (*i++ != ' ') die("bad input space");
+      if (*i++ != ' ') die("bad input");
       const node_id o = id(i);
-      if (num_outs == max_outs) die("bad input outs");
+      if (num_outs == max_outs) die("bad input");
       outs[num_outs++] = o;
       devices[o].num_ins++;
       i += 3;
