@@ -164,7 +164,7 @@ unsigned long long part2() {
       // the middle, but it works for the actual input types.
       bool valid = true;
       for (int y = min_y; y <= max_y; y++) {
-        if (grid[y][min_x] != '#' || grid[y][min_x] != '#') {
+        if (grid[y][min_x] != '#' || grid[y][max_x] != '#') {
           valid = false;
           goto stahp;
         }
