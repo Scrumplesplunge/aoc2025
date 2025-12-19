@@ -134,11 +134,7 @@ void reduce_row(struct table* t, int row) {
   for (int i = 0; i < n; i++) {
     const int v = abs(t->cells[row][i]);
     if (v == 0) continue;
-    if (divisor == 0) {
-      divisor = v;
-    } else {
-      divisor = gcd(divisor, v);
-    }
+    divisor = gcd(divisor, v);
   }
   if (divisor == 0) return;
   for (int i = 0; i < n; i++) t->cells[row][i] /= divisor;
