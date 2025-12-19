@@ -40,7 +40,7 @@ __attribute__((access(read_only, 2))) ssize_t write(unsigned int fd,
 }
 
 [[noreturn]] void exit(int code) {
-  asm volatile("int $0x80" : : "a"(1), "b"(code));
+  asm volatile("int $0x80" : : "a"(252), "b"(code));
 }
 
 // Entry point. We will invoke main from _start.
