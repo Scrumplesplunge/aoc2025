@@ -77,12 +77,13 @@ int part1() {
   for (int i = 0, n = num_machines; i < n; i++) {
     const struct machine* m = &machines[i];
     int best_count = max_buttons + 1;
-    for (int set = 0, all = (1 << m->num_buttons) - 1; set < all; set++) {
-      uint16 result = 0;
-      for (int i = 0; i < max_buttons; i++) {
-        if (set & (1 << i)) result ^= m->buttons[i];
-      }
-      if (result != m->target) continue;
+    uint16 set = 0;
+    uint16 mask = 0;
+    for (uint16 i = 0, all = 1 << m->num_buttons; i < all; i++) {
+      const uint16 bit = __builtin_ctzll(i + 1);
+      set ^= 1 << bit;
+      mask ^= m->buttons[bit];
+      if (mask != m->target) continue;
       const int count = popcount(set);
       if (count >= best_count) continue;
       best_count = count;
@@ -264,11 +265,6 @@ void dual_simplex(struct table* table) {
 
 // Convert a machine into a non-canonical simplex tableau.
 void build_table(struct table* table, const struct machine* machine) {
-  for (int i = 0; i < max_rows; i++) {
-    for (int j = 0; j < max_columns; j++) {
-      table->cells[i][j] = 999999;
-    }
-  }
   const int s = machine->size;
   const int b = machine->num_buttons;
   // Build the tableau.
